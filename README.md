@@ -82,7 +82,7 @@ npm run check:rust   # extrait le crate puis cargo check --all-targets
 ## Limites connues
 
 - Windows uniquement.
-- `PROCFREQMAX` n'a **qu'un cran utile** sur ce Ryzen 9 5900X : 3 300 et 2 000 MHz donnent le même temps (8 642 vs 8 630 ms) et la même fréquence rapportée, 3 342 MHz. Le firmware ne descend pas plus bas ; au-dessus de 3 300, le plafond est ignoré. Mesuré +43,5 % de temps mono-thread sur une charge de 6 s — une charge d'une seconde sous-estimait l'effet à +21,8 %.
+- `PROCFREQMAX` n'a **qu'un cran utile** sur ce Ryzen 9 5900X : 3 300 et 2 000 MHz y donnent le même temps (8 642 vs 8 630 ms) et la même fréquence rapportée, 3 342 MHz. Au-dessus de 3 300, aucun effet mesuré sur ce modèle. Mesuré +43,5 % de temps mono-thread sur une charge de 6 s — une charge d'une seconde sous-estimait l'effet à +21,8 %. **Un seul CPU testé** : sur un autre modèle, un plafond plus bas peut encore agir ; le repère affiché n'est pas une limite universelle.
 - **EPP (`PERFEPP`) sans effet mesurable** sur ce poste : 6 122 / 6 029 / 6 105 ms à EPP 0 / 50 / 100, soit l'amplitude du bruit (±1,6 %). Il n'est pas présenté comme un levier de débit.
 - **Turbo désactivé** : 7 806 ms au lieu de 6 115 (+29,6 %), effet net et reproductible.
 - La température CPU n'est pas toujours exposée (`MSAcpi_ThermalZoneTemperature` absent sur certains postes).

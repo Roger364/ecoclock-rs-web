@@ -250,7 +250,7 @@ export const ProfileBar: React.FC<ProfileBarProps> = ({
                 {p.name}
               </div>
               <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 mt-0.5 tabular-nums">
-                <span title="Plafond PROCFREQMAX : un seul cran utile sur Ryzen (3 300 et 2 000 MHz donnent le même résultat)">≤{(p.config.cpuFreqCapMhz / 1000).toFixed(1)}GHz</span>
+                <span title="Plafond PROCFREQMAX : repère mesuré sur Ryzen 9 5900X (3 300 et 2 000 MHz y donnent le même résultat)">≤{(p.config.cpuFreqCapMhz / 1000).toFixed(1)}GHz</span>
                 <span>{snap.cpuTempC.toFixed(0)}°C</span>
                 <span>{snap.systemNoiseDba.toFixed(0)}dB</span>
               </div>

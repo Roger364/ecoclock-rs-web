@@ -82,7 +82,7 @@ Dix propriétés, chacune tenue par un test nommé. Si l'une rougit, c'est la mo
 | Détection de capacités = échec réel de l'écriture | `PowerReadACValueIndex` réussit pour un réglage absent ; `powercfg /q` masque les policies sans valeur |
 | Binaire de test en CRT statique | l'image Sandbox n'a pas le runtime Visual C++ → `0xC0000135` avant tout code applicatif |
 | Mesures sur l'hôte sous élévation, restauration vérifiée | seule façon de connaître l'effet réel ; l'état initial est relu après coup |
-| Garder le curseur MHz avec la mention « plafond » | +43,5 % mesurés à 3 300 MHz sur charge longue, mais 2 000 MHz donne le même résultat : un seul cran, pas une échelle |
+| Garder le curseur MHz avec la mention « plafond » | +43,5 % mesurés à 3 300 MHz sur charge longue ; sur ce 5900X, 2 000 MHz donne le même résultat — un seul cran, pas une échelle |
 | Mesurer sur 6 s après chauffe plutôt que sur 1 s | une charge courte se fait encore en boost et sous-estime le plafond de moitié (+21,8 % au lieu de +43,5 %) |
 | Ne pas exposer l'EPP comme levier de débit | mesuré sans effet sur le 5900X (6 122 / 6 029 / 6 105 ms à EPP 0 / 50 / 100, soit le bruit) |
 | Réactiver le plan après écriture (`PowerSetActiveScheme`) | sans cela le système conserve les anciennes valeurs : la première campagne mesurait trois fois le même état |
@@ -145,7 +145,7 @@ Campagne CPPC2 du 17/11/2026 (charge calibrée de 6 s, 3 passes, chauffe de 3 s,
 Deux faits que la charge courte masquait :
 
 1. l'effet réel est **deux fois plus grand** (+43 % et non +22 %) : sur une seconde, le début de passe se fait encore en boost, ce qui dilue la moyenne ;
-2. le plafond n'a **qu'un cran** : 3 300 et 2 000 MHz donnent le même temps (0,14 % d'écart, étendue de 3-4 ms) et la même fréquence rapportée, 3 342 MHz. Le firmware ne descend pas plus bas.
+2. le plafond n'a **qu'un cran sur ce 5900X** : 3 300 et 2 000 MHz donnent le même temps (0,14 % d'écart, étendue de 3-4 ms) et la même fréquence rapportée, 3 342 MHz. Un autre modèle peut descendre plus bas : le repère affiché est une mesure, pas une limite.
 
 C'est un plafond à palier unique, pas une échelle de fréquences.
 
@@ -180,7 +180,7 @@ Détection retenue : le **code retour de l'écriture**. Rust le consigne dans `A
 2. **`$Matches` sur un tableau** : `powercfg /import` peut renvoyer plusieurs lignes ; `-match` travaille alors sur une collection et `$Matches` reste vide. Toujours aplatir (`Out-String`) avant `[regex]::Match`.
 3. **`$ErrorActionPreference = 'Stop'` + commande native** : tout stderr devient un `NativeCommandError` terminant. Repasser en `Continue` le temps de l'appel.
 4. **`powercfg /q` n'est pas un test de capacité** : une policy sans valeur stockée n'est pas affichée, alors qu'elle existe et s'écrit.
-5. **`PROCFREQMAX` n'a qu'un cran sur AMD** : 3 300 et 2 000 MHz donnent le même temps (+43,5 %) et la même fréquence (3 342 MHz). Une charge d'une seconde sous-estime l'effet de moitié (+21,8 %) : le début de passe échappe encore au plafond. Mesurer 6 s après chauffe.
+5. **`PROCFREQMAX` n'a qu'un cran sur le 5900X testé** : 3 300 et 2 000 MHz y donnent le même temps (+43,5 %) et la même fréquence (3 342 MHz) ; un autre CPU peut descendre plus bas. Une charge d'une seconde sous-estime l'effet de moitié (+21,8 %) : le début de passe échappe encore au plafond. Mesurer 6 s après chauffe.
 6. **Somme de checksums en `u64`** : additionner des hashes (états LCG) déborde ; avec `overflow-checks = true` et `panic = abort`, cela tue la GUI avant la première frame.
 7. **`.ps1` sans BOM** : PowerShell 5.1 lit un fichier sans BOM comme de l'ANSI, donc « sauvegardée » sort en « sauvegardÃ©e ». Le BOM est obligatoire.
 8. **Clés `PowerSchemes` protégées** : même élevé, un administrateur ne peut pas supprimer une valeur écrite via l'API ; il faut passer par l'API elle-même.

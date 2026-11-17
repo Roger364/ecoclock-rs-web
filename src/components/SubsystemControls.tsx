@@ -68,6 +68,13 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
   onNavigateTab,
 }) => {
   const [group, setGroup] = useState<SubGroup>("cpu");
+
+  // Repère mesuré sur Ryzen 9 5900X : le plafond PROCFREQMAX n'a qu'un cran.
+  // Affiché seulement sur AMD, et jamais présenté comme une loi pour un autre modèle.
+  const isAmd = /AMD|Ryzen/i.test(hardware.cpuName);
+  const markerMhz = 3300;
+  const freqSpan = Math.max(1, hardware.cpuFreqMaxMhz - hardware.cpuFreqMinMhz);
+  const markerRatio = Math.min(1, Math.max(0, (markerMhz - hardware.cpuFreqMinMhz) / freqSpan));
   const isAdmin = privilege === "admin";
 
   const renderAdminGate = (needsAdmin: boolean) => {
@@ -212,29 +219,59 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
                   badge={renderAdminGate(false)}
                   valueText={`${config.cpuFreqCapMhz} MHz · VID ~${Math.round(cpuVoltageAtFreq(config.cpuFreqCapMhz) * 1000)} mV`}
                 >
-                  <input
-                    type="range"
-                    min={hardware.cpuFreqMinMhz}
-                    max={hardware.cpuFreqMaxMhz}
-                    step={100}
-                    value={config.cpuFreqCapMhz}
-                    onChange={(e) => {
-                      const v = Number(e.target.value);
-                      onUpdateConfig("cpuFreqCapMhz", v, `PowerWriteACValueIndex(SUB_PROCESSOR, PROCFREQMAX, ${v})`);
-                    }}
-                    className="eco-slider w-full"
-                    aria-label="Plafond de fréquence du processeur en MHz"
-                    aria-valuetext={`${config.cpuFreqCapMhz} mégahertz`}
-                  />
+                  <div className="relative pt-4">
+                    {isAmd && (
+                      <>
+                        <div
+                          aria-hidden
+                          className="pointer-events-none absolute border-l border-dashed border-amber-400/70"
+                          style={{
+                            left: `calc(8px + (100% - 16px) * ${markerRatio})`,
+                            top: "1rem",
+                            height: "1.1rem",
+                          }}
+                        />
+                        <span
+                          aria-hidden
+                          className="pointer-events-none absolute top-0 -translate-x-1/2 font-mono text-[9px] text-amber-300/90"
+                          style={{ left: `calc(8px + (100% - 16px) * ${markerRatio})` }}
+                        >
+                          3,3 GHz
+                        </span>
+                      </>
+                    )}
+                    <input
+                      type="range"
+                      min={hardware.cpuFreqMinMhz}
+                      max={hardware.cpuFreqMaxMhz}
+                      step={100}
+                      value={config.cpuFreqCapMhz}
+                      onChange={(e) => {
+                        const v = Number(e.target.value);
+                        onUpdateConfig("cpuFreqCapMhz", v, `PowerWriteACValueIndex(SUB_PROCESSOR, PROCFREQMAX, ${v})`);
+                      }}
+                      className="eco-slider w-full"
+                      aria-label="Plafond de fréquence du processeur en MHz"
+                      aria-valuetext={`${config.cpuFreqCapMhz} mégahertz`}
+                    />
+                  </div>
                   <div className="flex justify-between text-[10px] font-mono text-slate-500 mt-1">
                     <span>{hardware.cpuFreqMinMhz} MHz (LFM)</span>
                     <span className="text-emerald-400/80">{Math.round(hardware.cpuBaseMhz * 0.92)} MHz (Sweet-spot)</span>
                     <span>{hardware.cpuFreqMaxMhz} MHz (Turbo)</span>
                   </div>
-                  <p className="mt-1 text-[10px] leading-snug text-amber-300/70">
-                    Plafond indicatif : le firmware peut l'honorer partiellement (mesuré +22 % de temps à 2 000 MHz,
-                    contre ~+85 % pour un vrai verrou). Un refus est compté et signalé, jamais passé sous silence.
-                  </p>
+                  {isAmd ? (
+                    <p className="mt-1 text-[10px] leading-snug text-amber-300/80">
+                      Repère 3 300 MHz : mesuré sur Ryzen 9 5900X — 2 000 et 3 300 MHz y donnent le même résultat
+                      (3 342 MHz, +43 % de temps). Sur d'autres processeurs, un plafond plus bas peut encore agir :
+                      c'est un repère, pas une limite.
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-[10px] leading-snug text-amber-300/70">
+                      Plafond indicatif : le firmware peut l'honorer partiellement. Un refus est compté et signalé,
+                      jamais passé sous silence.
+                    </p>
+                  )}
                 </ControlRow>
 
                 {/* Turbo Boost Mode */}

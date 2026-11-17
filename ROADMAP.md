@@ -38,7 +38,7 @@ Le `.ps1` n'est pas un asset de release : il est généré par l'application pou
 |---|---|---|---|
 | 8 | Test exécutable du `.ps1` ✅ | les assertions de chaîne n'ont pas attrapé la restauration muette ; seule l'exécution l'a vue | 4 tests qui lancent le vrai script, exécutables masqués |
 | 9 | Sonde thermique — **bloquée** : aucune sonde exposée sur ce poste (`MSAcpi_ThermalZoneTemperature` absent, compteurs perf en `0xC0000BB8`) | sans elle, aucune campagne chaleur/bruit n'est défendable | relevés Tctl avant/après sur une charge fixe, nécessite l'installation de LibreHardwareMonitor |
-| 10 | Trancher le curseur MHz ✅ | mesuré +43,5 % de temps à 3 300 MHz sur charge longue ; 2 000 MHz donne le même résultat (un seul cran) | gardé, affiché en plafond (« ≤ 3,3 GHz ») ; l'infobulle dit qu'il n'y a qu'un cran |
+| 10 | Trancher le curseur MHz ✅ | mesuré +43,5 % de temps à 3 300 MHz sur charge longue ; 2 000 MHz donne le même résultat sur ce 5900X | gardé, affiché en plafond (« ≤ 3,3 GHz ») avec un repère à 3,3 GHz, présenté comme une mesure et non une limite |
 
 ## Phase 5 — Portée (à discuter)
 

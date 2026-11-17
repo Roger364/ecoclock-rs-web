@@ -1682,12 +1682,12 @@ pub fn cpu_vendor() -> CpuVendor {
 }
 
 impl CpuVendor {
-    /// Le plafond MHz n'a qu'un cran sur AMD : 3 300 et 2 000 MHz donnent le meme
-    /// temps (+43,5 % mesures sur 6 s). On le dit plutot que de promettre une echelle.
+    /// Mesure sur Ryzen 9 5900X : le plafond n'a qu'un cran (3 300 = 2 000 MHz),
+    /// mais d'autres modeles peuvent descendre plus bas. Un repere, pas une loi.
     pub fn freq_cap_note(self) -> Option<&'static str> {
         match self {
             CpuVendor::Amd => Some(
-                "AMD : un seul cran utile. 3 300 et 2 000 MHz donnent le même temps (+43,5 %) et la même fréquence (3 342 MHz) : le firmware ne descend pas plus bas.",
+                "Ryzen 9 5900X (mesuré) : un seul cran. 3 300 et 2 000 MHz donnent le même temps (+43,5 %, 3 342 MHz). Sur d'autres modèles, un plafond plus bas peut encore agir.",
             ),
             CpuVendor::Intel | CpuVendor::Unknown => None,
         }
@@ -2367,7 +2367,18 @@ impl eframe::App for EcoClockApp {
                 // Colonne gauche : contrôles matériels avec infobulles détaillées
                 cols[0].heading("Sous-systèmes underclockables");
                 let r_cpu = cols[0].add(egui::Slider::new(&mut self.working.cpu_freq_cap_mhz, 800..=5200).text("CPU Max MHz"));
+                let cpu_rect = r_cpu.rect;
                 tooltips::attach(r_cpu, &tooltips::CPU_FREQ, tips);
+                if power_plan::cpu_vendor() == power_plan::CpuVendor::Amd {
+                    // Repere mesure sur Ryzen 9 5900X : le plafond n'a qu'un cran (~3,3 GHz).
+                    // D'autres modeles peuvent descendre plus bas : un repere, pas une loi.
+                    let ratio = ((3300.0 - 800.0) / (5200.0 - 800.0)) as f32;
+                    let x = cpu_rect.left() + cpu_rect.width() * ratio;
+                    cols[0].painter().line_segment(
+                        [egui::pos2(x, cpu_rect.top()), egui::pos2(x, cpu_rect.bottom())],
+                        egui::Stroke::new(1.0_f32, egui::Color32::from_rgb(251, 191, 36)),
+                    );
+                }
                 if let Some(note) = power_plan::cpu_vendor().freq_cap_note() {
                     cols[0].small(egui::RichText::new(note).color(egui::Color32::from_rgb(251, 191, 36)));
                 }

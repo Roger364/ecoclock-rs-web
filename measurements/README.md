@@ -32,14 +32,16 @@ AC et DC initiales sont restaurées dans un `finally` et relues après coup.
   dans le bruit (±1,6 %, soit la dérive entre les deux références). Sur ce CPU,
   ce n'est pas un levier de performance, seulement une préférence énergétique.
 - **Le turbo coûte 30 %** quand on le coupe.
-- **Le plafond n'a qu'un cran** : 3 300 et 2 000 MHz donnent le même temps et la
-  même fréquence rapportée (3 342 MHz). Le firmware ne descend pas plus bas.
+- **Le plafond n'a qu'un cran sur ce 5900X** : 3 300 et 2 000 MHz donnent le même
+  temps et la même fréquence rapportée (3 342 MHz). Sur un autre modèle, un
+  plafond plus bas peut encore agir : ce cran est propre à ce CPU.
 - Une charge d'une seconde **sous-estime** le plafond de moitié (+21,8 %) : le
   début de passe se fait encore en boost, ce qui dilue la moyenne.
 
 ### Limites
 
-- Un seul poste, un seul CPU. Rien ici n'est une promesse pour un autre modèle.
+- Un seul poste, un seul CPU. Rien ici n'est une promesse pour un autre modèle :
+  en particulier, le cran à 3 342 MHz est propre au 5900X.
 - La fréquence rapportée par `CallNtPowerInformation` vaut 3 701 MHz (la base)
   dès que le plafond est inactif : elle ne montre pas le boost réel. Seul le
   temps fait foi ; la fréquence ne sert qu'à confirmer qu'un plafond s'applique.
