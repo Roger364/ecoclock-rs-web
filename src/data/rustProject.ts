@@ -1682,12 +1682,12 @@ pub fn cpu_vendor() -> CpuVendor {
 }
 
 impl CpuVendor {
-    /// Le plafond MHz n'est pas un verrou dur sur AMD : mesuré à +21,8 % de temps
-    /// d'exécution pour 2 000 MHz, au lieu des ~+85 % attendus. On le dit.
+    /// Le plafond MHz n'a qu'un cran sur AMD : 3 300 et 2 000 MHz donnent le meme
+    /// temps (+43,5 % mesures sur 6 s). On le dit plutot que de promettre une echelle.
     pub fn freq_cap_note(self) -> Option<&'static str> {
         match self {
             CpuVendor::Amd => Some(
-                "AMD : le plafond MHz est indicatif. Mesuré +21,8 % à 2 000 MHz (au lieu de ~+85 % pour un verrou dur) : le firmware l'honore partiellement.",
+                "AMD : un seul cran utile. 3 300 et 2 000 MHz donnent le même temps (+43,5 %) et la même fréquence (3 342 MHz) : le firmware ne descend pas plus bas.",
             ),
             CpuVendor::Intel | CpuVendor::Unknown => None,
         }

@@ -29,10 +29,13 @@ L'interface affiche des projections, pas des relevés. Ce tableau dit ce qui vie
 | Puissance paquet, consommation murale, €/an, CO₂ | **modélisé** | rendement PSU, tarif et mix paramétrables |
 | Temps d'exécution avant/après (ms) | **modélisé** | modèle de charge, pas un benchmark exécuté |
 | Valeurs écrites puis relues dans le plan d'alimentation | **mesuré** | `powrprof` côté Rust, relecture après écriture |
-| Effet du plafond 55 % et de `PROCFREQMAX` | **mesuré sur ce poste** | 775,5 → 1 088,5 ms (+40,4 %, 1 thread) ; 922,5 → 1 123,5 ms (+21,8 %) |
+| Effet du plafond 55 % et de `PROCFREQMAX` | **mesuré sur ce poste** | 775,5 → 1 088,5 ms (+40,4 %, 1 thread) ; 6 023 → 8 642 ms (+43,5 %) à 3 300 MHz, identique à 2 000 MHz |
 | Température réelle du CPU | **indisponible** | `MSAcpi_ThermalZoneTemperature` absent sur ce poste |
 
 Le crate Rust lit les capteurs quand ils existent ; le configurateur web, lui, ne lit rien : il calcule.
+
+Le protocole et les données brutes sont dans [measurements/](measurements/) ; le banc est
+`scripts/measure-cppc.ps1`.
 
 ## Téléchargement
 
@@ -66,7 +69,7 @@ npm run check:rust   # extrait le crate puis cargo check --all-targets
 
 | Commande | Résultat |
 |---|---|
-| `npx vitest run` | 47/47 |
+| `npx vitest run` | 48/48 |
 | `npm run check:rust -- --keep`, puis `cargo test` dans `.check-rust/` | 12/12 |
 | `npx tsc --noEmit` | 0 erreur |
 
@@ -79,7 +82,9 @@ npm run check:rust   # extrait le crate puis cargo check --all-targets
 ## Limites connues
 
 - Windows uniquement.
-- `PROCFREQMAX` est un plafond **partiel** sur AMD : mesuré +21,8 % de temps mono-thread à 2 000 MHz, contre ~+85 % pour un verrou dur. La GUI détecte le constructeur (`PROCESSOR_IDENTIFIER`) et affiche cet écart sous le curseur ; aucun réglage AMD supplémentaire n'est proposé faute de mesure.
+- `PROCFREQMAX` n'a **qu'un cran utile** sur ce Ryzen 9 5900X : 3 300 et 2 000 MHz donnent le même temps (8 642 vs 8 630 ms) et la même fréquence rapportée, 3 342 MHz. Le firmware ne descend pas plus bas ; au-dessus de 3 300, le plafond est ignoré. Mesuré +43,5 % de temps mono-thread sur une charge de 6 s — une charge d'une seconde sous-estimait l'effet à +21,8 %.
+- **EPP (`PERFEPP`) sans effet mesurable** sur ce poste : 6 122 / 6 029 / 6 105 ms à EPP 0 / 50 / 100, soit l'amplitude du bruit (±1,6 %). Il n'est pas présenté comme un levier de débit.
+- **Turbo désactivé** : 7 806 ms au lieu de 6 115 (+29,6 %), effet net et reproductible.
 - La température CPU n'est pas toujours exposée (`MSAcpi_ThermalZoneTemperature` absent sur certains postes).
 
 ## Structure

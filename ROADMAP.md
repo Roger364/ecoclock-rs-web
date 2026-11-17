@@ -38,13 +38,13 @@ Le `.ps1` n'est pas un asset de release : il est généré par l'application pou
 |---|---|---|---|
 | 8 | Test exécutable du `.ps1` ✅ | les assertions de chaîne n'ont pas attrapé la restauration muette ; seule l'exécution l'a vue | 4 tests qui lancent le vrai script, exécutables masqués |
 | 9 | Sonde thermique — **bloquée** : aucune sonde exposée sur ce poste (`MSAcpi_ThermalZoneTemperature` absent, compteurs perf en `0xC0000BB8`) | sans elle, aucune campagne chaleur/bruit n'est défendable | relevés Tctl avant/après sur une charge fixe, nécessite l'installation de LibreHardwareMonitor |
-| 10 | Trancher le curseur MHz ✅ | mesuré partiel (+21,8 % à 2 000 MHz au lieu de ~+85 %) : le garder, le brider ou le retirer | gardé, mais affiché en plafond (« ≤ 3,3 GHz ») et non en fréquence d'exécution |
+| 10 | Trancher le curseur MHz ✅ | mesuré +43,5 % de temps à 3 300 MHz sur charge longue ; 2 000 MHz donne le même résultat (un seul cran) | gardé, affiché en plafond (« ≤ 3,3 GHz ») ; l'infobulle dit qu'il n'y a qu'un cran |
 
 ## Phase 5 — Portée (à discuter)
 
 | # | Action | Pourquoi |
 |---|---|---|
-| 11 | Détecter le vendor CPU (Intel/AMD) ✅ détection + avertissement ; adaptation à discuter | `PROCFREQMAX` est Intel-first ; côté AMD c'est CPPC2 qui compte. La GUI lit `PROCESSOR_IDENTIFIER` et affiche l'écart mesuré sur AMD, sans ajouter de réglage non mesuré |
+| 11 | Détecter le vendor CPU (Intel/AMD) ✅ détection + campagne CPPC2 | `PROCFREQMAX` est Intel-first ; côté AMD c'est CPPC2 qui compte. Mesure sur 5900X : EPP sans effet, plafond à un cran, Turbo -30 %. L'adaptation AMD n'a donc rien de mesuré à proposer de plus que l'existant |
 | 12 | Interface FR/EN | le dépôt est public, l'interface est francophone |
 
 ## Ce que je ne ferais pas

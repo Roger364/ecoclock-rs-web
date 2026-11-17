@@ -31,6 +31,7 @@ binaire release         GUI + headless validés (sandbox 4/4, fenêtre réelle s
 | 7 | Détection de capacités par code retour d'écriture | sandbox 13/1 | `d04ea13` |
 | 8 | Binaire release testé ; GUI réparée (débordement au démarrage) | sandbox 4/4 + fenêtre hôte | — |
 | 9 | Constructeur CPU détecté ; plafond MHz annoncé comme indicatif sur AMD | `cargo test` 12/12 (`vendor_tests`) | ce commit |
+| 10 | Banc CPPC2 versionné : EPP sans effet, plafond à un cran, Turbo -30 % | 33 mesures, CSV dans `measurements/` | ce commit |
 
 La vague 1 annonçait une perte inévitable (VRAM `prefer_p5`, timer 0,5 ms). La vague 4 l'a supprimée à la source : ces deux états sont désormais des champs Rust de première classe, l'export n'a plus d'extension web et l'avertissement a disparu avec sa cause.
 
@@ -81,7 +82,10 @@ Dix propriétés, chacune tenue par un test nommé. Si l'une rougit, c'est la mo
 | Détection de capacités = échec réel de l'écriture | `PowerReadACValueIndex` réussit pour un réglage absent ; `powercfg /q` masque les policies sans valeur |
 | Binaire de test en CRT statique | l'image Sandbox n'a pas le runtime Visual C++ → `0xC0000135` avant tout code applicatif |
 | Mesures sur l'hôte sous élévation, restauration vérifiée | seule façon de connaître l'effet réel ; l'état initial est relu après coup |
-| Garder le curseur MHz avec la mention « plafond indicatif » | mesuré partiel (+21,8 %), donc utile mais pas une limite dure |
+| Garder le curseur MHz avec la mention « plafond » | +43,5 % mesurés à 3 300 MHz sur charge longue, mais 2 000 MHz donne le même résultat : un seul cran, pas une échelle |
+| Mesurer sur 6 s après chauffe plutôt que sur 1 s | une charge courte se fait encore en boost et sous-estime le plafond de moitié (+21,8 % au lieu de +43,5 %) |
+| Ne pas exposer l'EPP comme levier de débit | mesuré sans effet sur le 5900X (6 122 / 6 029 / 6 105 ms à EPP 0 / 50 / 100, soit le bruit) |
+| Réactiver le plan après écriture (`PowerSetActiveScheme`) | sans cela le système conserve les anciennes valeurs : la première campagne mesurait trois fois le même état |
 | Afficher « ≤ 3,3 GHz » au lieu de « 3,3 GHz » | le plafond n'est pas une fréquence d'exécution : le firmware l'honore partiellement |
 | Exporter le `.ps1` avec un BOM UTF-8 | sans BOM, PowerShell 5.1 lit le fichier en ANSI et casse les accents |
 | Checksum des benchmarks en `wrapping_add` | les valeurs sommées sont des hashes, pas des durées ; le débordement tuait la GUI |
@@ -127,15 +131,23 @@ En mono-thread le débit suit la fréquence : 55 % coûte 29 % de débit. En 24 
 
 ## Plafond MHz (`PROCFREQMAX`)
 
-Même protocole, 1 thread, 4 passes, valeur relue avant et après chaque passe.
+Première campagne (charge ~1 s, 4 passes) : `PROCFREQMAX = 2 000` coûtait +21,8 %, très loin des ~+85 % d'un verrou dur.
 
-| Phase | Médiane |
-|---|---|
-| `PROCFREQMAX = 0` (défaut) | 922,5 ms |
-| `PROCFREQMAX = 2000` | 1 123,5 ms (**+21,8 %**) |
-| Retour à 0 | 889 ms, valeur relue 0 |
+Campagne CPPC2 du 17/11/2026 (charge calibrée de 6 s, 3 passes, chauffe de 3 s, 4 750 M itérations, `scripts/measure-cppc.ps1`) :
 
-Un vrai verrou à 2 000 MHz (54 % de la base 3 701 MHz) devrait coûter ~+85 % ; on n'observe que +22 %. Le réglage **agit** — il n'est pas décoratif — mais le firmware AMD l'honore **partiellement** : c'est un plafond indicatif, pas une limite dure. Le curseur reste utile à condition de le dire.
+| Phase | Médiane | Écart |
+|---|---|---|
+| référence (plafond 0) | 6 022,6 ms | — |
+| `PROCFREQMAX = 3300` | 8 642,2 ms | **+43,5 %** |
+| `PROCFREQMAX = 2000` | 8 630,1 ms | **+43,3 %** |
+| retour à 0 | 6 135,3 ms | +1,9 % |
+
+Deux faits que la charge courte masquait :
+
+1. l'effet réel est **deux fois plus grand** (+43 % et non +22 %) : sur une seconde, le début de passe se fait encore en boost, ce qui dilue la moyenne ;
+2. le plafond n'a **qu'un cran** : 3 300 et 2 000 MHz donnent le même temps (0,14 % d'écart, étendue de 3-4 ms) et la même fréquence rapportée, 3 342 MHz. Le firmware ne descend pas plus bas.
+
+C'est un plafond à palier unique, pas une échelle de fréquences.
 
 ## Binaire release
 
@@ -168,11 +180,12 @@ Détection retenue : le **code retour de l'écriture**. Rust le consigne dans `A
 2. **`$Matches` sur un tableau** : `powercfg /import` peut renvoyer plusieurs lignes ; `-match` travaille alors sur une collection et `$Matches` reste vide. Toujours aplatir (`Out-String`) avant `[regex]::Match`.
 3. **`$ErrorActionPreference = 'Stop'` + commande native** : tout stderr devient un `NativeCommandError` terminant. Repasser en `Continue` le temps de l'appel.
 4. **`powercfg /q` n'est pas un test de capacité** : une policy sans valeur stockée n'est pas affichée, alors qu'elle existe et s'écrit.
-5. **`PROCFREQMAX` est un plafond indicatif sur AMD** : mesuré à +21,8 % pour 2 000 MHz au lieu des ~+85 % attendus d'un verrou dur.
+5. **`PROCFREQMAX` n'a qu'un cran sur AMD** : 3 300 et 2 000 MHz donnent le même temps (+43,5 %) et la même fréquence (3 342 MHz). Une charge d'une seconde sous-estime l'effet de moitié (+21,8 %) : le début de passe échappe encore au plafond. Mesurer 6 s après chauffe.
 6. **Somme de checksums en `u64`** : additionner des hashes (états LCG) déborde ; avec `overflow-checks = true` et `panic = abort`, cela tue la GUI avant la première frame.
 7. **`.ps1` sans BOM** : PowerShell 5.1 lit un fichier sans BOM comme de l'ANSI, donc « sauvegardée » sort en « sauvegardÃ©e ». Le BOM est obligatoire.
 8. **Clés `PowerSchemes` protégées** : même élevé, un administrateur ne peut pas supprimer une valeur écrite via l'API ; il faut passer par l'API elle-même.
 9. **Backtick dans une doc Rust** : le contenu des fichiers Rust vit dans un template literal TypeScript ; un backtick non échappé dans un commentaire ferme la chaîne et casse l'assemblage (`Expected "}"`). Même classe que les `\"` de la vague 3.
+10. **Écrire ne suffit pas** : sans `PowerSetActiveScheme` après `PowerWriteACValueIndex`, le système peut conserver l'ancien réglage. Le crate le fait ; le banc aussi depuis la deuxième campagne.
 
 ---
 
