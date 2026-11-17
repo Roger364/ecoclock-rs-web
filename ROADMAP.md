@@ -1,7 +1,7 @@
 # Feuille de route
 
 État au 18/11/2026 : configurateur React + crate Rust embarqué, 43 tests TypeScript, 10 tests Rust,
-GUI réparée, dépôt public. Phases 1 à 3 faites. Le détail technique, les décisions et les pièges sont dans
+GUI réparée, dépôt public. Phases 1 à 3 faites, phase 4 presque close (sonde thermique bloquée). Le détail technique, les décisions et les pièges sont dans
 [PLAN-ACTIONS.md](PLAN-ACTIONS.md) ; ce document ne dit que **quoi faire ensuite, dans quel ordre**.
 
 L'ordre n'est pas arbitraire : un dépôt public doit d'abord être utilisable et honnête, ensuite
@@ -31,13 +31,13 @@ automatisé, ensuite distribuable — les fonctionnalités viennent après.
 
 Le `.ps1` n'est pas un asset de release : il est généré par l'application pour le profil choisi, avec son `-Restore`.
 
-## Phase 4 — Produit (ordre de valeur)
+## Phase 4 — Produit (✅ faite le 17/11/2026 hors sonde thermique)
 
 | # | Action | Pourquoi | Fini quand |
 |---|---|---|---|
-| 8 | Test **exécutable** du `.ps1` en sandbox | les assertions de chaîne n'ont pas attrapé la restauration muette ; seule l'exécution l'a vue | test qui exige `[OK] … X réglage(s), Y ignoré(s)` |
-| 9 | Sonde thermique (LibreHardwareMonitor) | sans elle, aucune campagne chaleur/bruit n'est défendable | relevés Tctl avant/après sur une charge fixe |
-| 10 | Trancher le curseur MHz | mesuré partiel (+21,8 % à 2 000 MHz au lieu de ~+85 %) : le garder, le brider ou le retirer | décision écrite + texte définitif dans l'UI |
+| 8 | Test exécutable du `.ps1` ✅ | les assertions de chaîne n'ont pas attrapé la restauration muette ; seule l'exécution l'a vue | 4 tests qui lancent le vrai script, exécutables masqués |
+| 9 | Sonde thermique — **bloquée** : aucune sonde exposée sur ce poste (`MSAcpi_ThermalZoneTemperature` absent, compteurs perf en `0xC0000BB8`) | sans elle, aucune campagne chaleur/bruit n'est défendable | relevés Tctl avant/après sur une charge fixe, nécessite l'installation de LibreHardwareMonitor |
+| 10 | Trancher le curseur MHz ✅ | mesuré partiel (+21,8 % à 2 000 MHz au lieu de ~+85 %) : le garder, le brider ou le retirer | gardé, mais affiché en plafond (« ≤ 3,3 GHz ») et non en fréquence d'exécution |
 
 ## Phase 5 — Portée (à discuter)
 

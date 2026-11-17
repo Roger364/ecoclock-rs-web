@@ -52,3 +52,17 @@ jobs:
       - run: npm run check:rust -- --keep
       - run: cargo test --quiet --all-targets
         working-directory: .check-rust
+
+  powershell:
+    name: Script PowerShell (exécution réelle)
+    # Le script généré appelle powercfg.exe : sur Windows seulement, et les
+    # exécutables sont masqués par des fonctions dans le test.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx vitest run src/utils/windowsScript.exec.test.ts

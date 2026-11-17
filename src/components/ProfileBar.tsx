@@ -250,7 +250,7 @@ export const ProfileBar: React.FC<ProfileBarProps> = ({
                 {p.name}
               </div>
               <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 mt-0.5 tabular-nums">
-                <span>{(p.config.cpuFreqCapMhz / 1000).toFixed(1)}GHz</span>
+                <span title="Plafond PROCFREQMAX, honoré partiellement par le firmware">≤{(p.config.cpuFreqCapMhz / 1000).toFixed(1)}GHz</span>
                 <span>{snap.cpuTempC.toFixed(0)}°C</span>
                 <span>{snap.systemNoiseDba.toFixed(0)}dB</span>
               </div>

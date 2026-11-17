@@ -151,5 +151,7 @@ export function buildWindowsPowerShellScript(
     ``
   );
 
-  return lines.join("\r\n");
+  // BOM UTF-8 obligatoire : PowerShell 5.1 lit un .ps1 sans BOM comme de l'ANSI,
+  // ce qui transforme « sauvegardée » en « sauvegardÃ©e » dans la sortie.
+  return "\uFEFF" + lines.join("\r\n");
 }

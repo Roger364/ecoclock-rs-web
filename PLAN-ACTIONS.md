@@ -81,6 +81,8 @@ Dix propriétés, chacune tenue par un test nommé. Si l'une rougit, c'est la mo
 | Binaire de test en CRT statique | l'image Sandbox n'a pas le runtime Visual C++ → `0xC0000135` avant tout code applicatif |
 | Mesures sur l'hôte sous élévation, restauration vérifiée | seule façon de connaître l'effet réel ; l'état initial est relu après coup |
 | Garder le curseur MHz avec la mention « plafond indicatif » | mesuré partiel (+21,8 %), donc utile mais pas une limite dure |
+| Afficher « ≤ 3,3 GHz » au lieu de « 3,3 GHz » | le plafond n'est pas une fréquence d'exécution : le firmware l'honore partiellement |
+| Exporter le `.ps1` avec un BOM UTF-8 | sans BOM, PowerShell 5.1 lit le fichier en ANSI et casse les accents |
 | Checksum des benchmarks en `wrapping_add` | les valeurs sommées sont des hashes, pas des durées ; le débordement tuait la GUI |
 
 ---
@@ -165,7 +167,8 @@ Détection retenue : le **code retour de l'écriture**. Rust le consigne dans `A
 4. **`powercfg /q` n'est pas un test de capacité** : une policy sans valeur stockée n'est pas affichée, alors qu'elle existe et s'écrit.
 5. **`PROCFREQMAX` est un plafond indicatif sur AMD** : mesuré à +21,8 % pour 2 000 MHz au lieu des ~+85 % attendus d'un verrou dur.
 6. **Somme de checksums en `u64`** : additionner des hashes (états LCG) déborde ; avec `overflow-checks = true` et `panic = abort`, cela tue la GUI avant la première frame.
-7. **Clés `PowerSchemes` protégées** : même élevé, un administrateur ne peut pas supprimer une valeur écrite via l'API ; il faut passer par l'API elle-même.
+7. **`.ps1` sans BOM** : PowerShell 5.1 lit un fichier sans BOM comme de l'ANSI, donc « sauvegardée » sort en « sauvegardÃ©e ». Le BOM est obligatoire.
+8. **Clés `PowerSchemes` protégées** : même élevé, un administrateur ne peut pas supprimer une valeur écrite via l'API ; il faut passer par l'API elle-même.
 
 ---
 
