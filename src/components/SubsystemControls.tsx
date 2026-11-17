@@ -232,8 +232,8 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
                     <span>{hardware.cpuFreqMaxMhz} MHz (Turbo)</span>
                   </div>
                   <p className="mt-1 text-[10px] leading-snug text-amber-300/70">
-                    Windows accepte la valeur, mais le firmware peut l'ignorer : vérifiez la fréquence réelle après
-                    application. Un refus est compté et signalé, jamais passé sous silence.
+                    Plafond indicatif : le firmware peut l'honorer partiellement (mesuré +22 % de temps à 2 000 MHz,
+                    contre ~+85 % pour un vrai verrou). Un refus est compté et signalé, jamais passé sous silence.
                   </p>
                 </ControlRow>
 

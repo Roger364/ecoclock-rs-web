@@ -11,7 +11,7 @@ vite build              821,99 kB (242,87 kB gzip), bundle single-file
 cargo check --all-targets  OK (21 fichiers, 3 warnings de code mort)
 ecoclock --check        policies_absentes=aucun
 sandbox Windows         13 réglages appliqués, 1 ignoré (IGPU_BIAS), restauration 100 %
-mesure hôte             plafond 55 % : +40,4 % de temps mono-thread
+mesure hôte             plafond 55 % : +40,4 % ; PROCFREQMAX 2000 MHz : +21,8 % mono-thread
 ```
 
 ---
@@ -36,15 +36,11 @@ La vague 1 annonçait une perte inévitable (VRAM `prefer_p5`, timer 0,5 ms). La
 
 Par ordre de valeur. Chaque ligne dit **pourquoi** et **comment vérifier**.
 
-1. **Mesurer l'effet réel de `PROCFREQMAX`.** Seul point aveugle du produit : Windows accepte l'écriture, mais rien ne prouve que le firmware l'honore. Nécessite un compteur de fréquence (HWiNFO ou LibreHardwareMonitor) : ni WMI (`Win32_Processor.CurrentClockSpeed` reste à 3701 MHz) ni `MSAcpi_ThermalZoneTemperature` ne sont exploitables ici. Vérification : charge fixe mono-thread, `PROCFREQMAX=2000`, comparer le débit à celui du plafond en pourcentage.
+1. **Tester le binaire release dans le sandbox.** Jamais fait : le sous-système GUI ne garde pas la console, donc le comportement diffère du debug. Vérification : appliquer P1 puis `--restore-baseline`, contrôler `powercfg /q` et l'absence de fuite de fenêtre console.
 
-2. **Trancher le sort du curseur MHz selon 1.** S'il n'est pas honoré, le masquer (ou le marquer « sans effet mesuré sur ce CPU ») vaut mieux qu'une note. Aujourd'hui l'UI affiche une mise en garde honnête mais le curseur reste actif.
+2. **Verrouiller le contrat du `.ps1` par un test exécutable.** Aujourd'hui seules des assertions de chaîne couvrent le générateur. Un test pourrait exécuter le script dans le sandbox et exiger `[OK] … X réglage(s), Y ignoré(s)` — c'est le seul moyen d'attraper une régression comme celle de la vague 5.
 
-3. **Tester le binaire release dans le sandbox.** Jamais fait : le sous-système GUI ne garde pas la console, donc le comportement diffère du debug. Vérification : appliquer P1 puis `--restore-baseline`, contrôler `powercfg /q` et l'absence de fuite de fenêtre console.
-
-4. **Verrouiller le contrat du `.ps1` par un test exécutable.** Aujourd'hui seules des assertions de chaîne couvrent le générateur. Un test pourrait exécuter le script dans le sandbox et exiger `[OK] … X réglage(s), Y ignoré(s)` — c'est le seul moyen d'attraper une régression comme celle de la vague 5.
-
-5. **Sonde thermique dédiée (optionnel).** Sans elle, aucune campagne chaleur/bruit n'est possible : `MSAcpi_ThermalZoneTemperature` est absent sur ce poste.
+3. **Sonde thermique dédiée (optionnel).** Sans elle, aucune campagne chaleur/bruit n'est possible : `MSAcpi_ThermalZoneTemperature` est absent sur ce poste.
 
 ---
 
@@ -83,6 +79,7 @@ Dix propriétés, chacune tenue par un test nommé. Si l'une rougit, c'est la mo
 | Détection de capacités = échec réel de l'écriture | `PowerReadACValueIndex` réussit pour un réglage absent ; `powercfg /q` masque les policies sans valeur |
 | Binaire de test en CRT statique | l'image Sandbox n'a pas le runtime Visual C++ → `0xC0000135` avant tout code applicatif |
 | Mesures sur l'hôte sous élévation, restauration vérifiée | seule façon de connaître l'effet réel ; l'état initial est relu après coup |
+| Garder le curseur MHz avec la mention « plafond indicatif » | mesuré partiel (+21,8 %), donc utile mais pas une limite dure |
 
 ---
 
@@ -121,6 +118,18 @@ Charge fixe déterministe, 4 passes par phase, médiane, plafond relu avant/apr�
 
 En mono-thread le débit suit la fréquence : 55 % coûte 29 % de débit. En 24 threads l'effet tombe à 10 % — SMT et boost se partagent la fréquence, le débit agrégé ne suit plus linéairement.
 
+## Plafond MHz (`PROCFREQMAX`)
+
+Même protocole, 1 thread, 4 passes, valeur relue avant et après chaque passe.
+
+| Phase | Médiane |
+|---|---|
+| `PROCFREQMAX = 0` (défaut) | 922,5 ms |
+| `PROCFREQMAX = 2000` | 1 123,5 ms (**+21,8 %**) |
+| Retour à 0 | 889 ms, valeur relue 0 |
+
+Un vrai verrou à 2 000 MHz (54 % de la base 3 701 MHz) devrait coûter ~+85 % ; on n'observe que +22 %. Le réglage **agit** — il n'est pas décoratif — mais le firmware AMD l'honore **partiellement** : c'est un plafond indicatif, pas une limite dure. Le curseur reste utile à condition de le dire.
+
 ## Détection de capacités
 
 | Sonde | Verdict |
@@ -139,7 +148,8 @@ Détection retenue : le **code retour de l'écriture**. Rust le consigne dans `A
 2. **`$Matches` sur un tableau** : `powercfg /import` peut renvoyer plusieurs lignes ; `-match` travaille alors sur une collection et `$Matches` reste vide. Toujours aplatir (`Out-String`) avant `[regex]::Match`.
 3. **`$ErrorActionPreference = 'Stop'` + commande native** : tout stderr devient un `NativeCommandError` terminant. Repasser en `Continue` le temps de l'appel.
 4. **`powercfg /q` n'est pas un test de capacité** : une policy sans valeur stockée n'est pas affichée, alors qu'elle existe et s'écrit.
-5. **Clés `PowerSchemes` protégées** : même élevé, un administrateur ne peut pas supprimer une valeur écrite via l'API ; il faut passer par l'API elle-même.
+5. **`PROCFREQMAX` est un plafond indicatif sur AMD** : mesuré à +21,8 % pour 2 000 MHz au lieu des ~+85 % attendus d'un verrou dur.
+6. **Clés `PowerSchemes` protégées** : même élevé, un administrateur ne peut pas supprimer une valeur écrite via l'API ; il faut passer par l'API elle-même.
 
 ---
 
