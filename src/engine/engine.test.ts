@@ -700,4 +700,23 @@ describe("blindage de la désérialisation (profils, autostart, conditions & TOM
     const standard = faithful.map((p) => ({ ...p, config: { ...p.config, timerResolution: "standard_1ms" as const } }));
     expect(getTomlPersistenceWarnings(standard)).toEqual([]);
   });
+
+  it("ne propose l'EEE 802.3az que sur une machine réellement dotée d'un port Ethernet", () => {
+    const wifiOnly = { ...HARDWARE_PROFILES[0], hasEthernet: false };
+    const cfgWifi = clampConfigToProfile(STOCK_BASELINE_CONFIG, wifiOnly);
+    expect(
+      generateOptimizationProposals(cfgWifi, "office", "pareto", wifiOnly).some((p) => p.id === "nic_eee_802_3az")
+    ).toBe(false);
+
+    const wired = HARDWARE_PROFILES[0];
+    const cfgWired = clampConfigToProfile(STOCK_BASELINE_CONFIG, wired);
+    expect(
+      generateOptimizationProposals(cfgWired, "office", "pareto", wired).some((p) => p.id === "nic_eee_802_3az")
+    ).toBe(true);
+
+    // Le clamp doit éteindre le réglage, pas seulement masquer la proposition :
+    // un TOML importé d'une autre machine ne peut pas transporter un réglage inapplicable.
+    expect(clampConfigToProfile({ ...cfgWired, nicEeeEnabled: true }, wifiOnly).nicEeeEnabled).toBe(false);
+    expect(clampConfigToProfile({ ...cfgWired, nicEeeEnabled: true }, wired).nicEeeEnabled).toBe(true);
+  });
 });

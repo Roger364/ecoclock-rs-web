@@ -354,7 +354,7 @@ const RULES: CandidateRule[] = [
     tooltipKey: "nic_eee",
     latencyBenchId: "bus_net",
     latencyContext: "sortie LPI Ethernet (20 µs)",
-    isNeeded: (c) => !c.nicEeeEnabled,
+    isNeeded: (c, _g, hw) => hw.hasEthernet && !c.nicEeeEnabled,
     buildPatch: () => ({ nicEeeEnabled: true }),
     currentSummary: () => "Ethernet 802.3az EEE : OFF (trames IDLE continues)",
     proposedSummary: () => "Ethernet 802.3az EEE : ON (Low-Power Idle)",

@@ -3,13 +3,13 @@
 Base : `rust-hardware-underclocking-utility4.zip` (17/11/2026, 54 fichiers, 16 121 lignes `src/`).
 Organisation en **vagues** : une vague = un ensemble de correctifs sans interaction entre eux, validable en une seule passe de vérification.
 
-**État vérifié à l'instant :** `tsc --noEmit` 0 erreur · `vitest run` **41/41** · `vite build` OK (811,56 kB / 239,72 kB gzip).
+**État vérifié à l'instant :** `tsc --noEmit` 0 erreur · `vitest run` **42/42** · `vite build` OK (809,32 kB / 239,46 kB gzip).
 Référence d'origine (v4 non modifiée) : 39 tests, 808,45 kB / 239,10 kB.
 
 | Vague | Contenu | Statut | Tests |
 |---|---|---|---|
 | **1** | Contrat TOML documenté, pertes annoncées, audit cohérent, docstrings | ✅ **livrée** | 41 |
-| **2** | `hasEthernet` : suppression de la proposition EEE fantôme | ⏳ prête, patchs ci-dessous | 42 attendus |
+| **2** | `hasEthernet` : suppression de la proposition EEE fantôme | ✅ **livrée** | 42 |
 | **3** | Verrou de schéma étendu, fidélité Rust | 💤 optionnelle | — |
 
 ---
@@ -123,7 +123,19 @@ Le tableau comparatif de l'onglet Audit passe de « 39 tests » à « 41 tests �
 
 ---
 
-# Vague 2 — prête à exécuter
+# Vague 2 — livrée
+
+## Ce qui a changé
+
+| Fichier | Changement |
+|---|---|
+| `src/types/hardware.ts` | champ `hasEthernet: boolean`, obligatoire |
+| `src/data/hardwareProfiles.ts` | valeur pour les 4 profils : `true`, `true`, **`false` (portable)**, `true` |
+| `src/engine/validation.ts` | le clamp force `nicEeeEnabled = false` sans Ethernet |
+| `src/engine/optimizer.ts` | `isNeeded` exige `hw.hasEthernet` |
+| `src/engine/engine.test.ts` | 1 test : proposition absente en Wi-Fi seul, présente en filaire, clamp vérifié |
+
+**Arbitrage sur le portable.** Le profil « Portable Ryzen + RTX 4060 » décrit une dalle interne 2560×1600 165 Hz sans port RJ45 mentionné : `hasEthernet: false`. C'est le choix prudent — omettre une optimisation possible coûte moins cher qu'annoncer 2,4 W qui ne peuvent pas se produire, puisque l'app revendique « aucun gain inventé ». Si votre châssis possède un RJ45, repasser la ligne à `true`.
 
 ## `hasEthernet` : supprimer la proposition EEE fantôme
 
@@ -154,7 +166,7 @@ Champ **obligatoire** : le compilateur signalera les 4 profils à compléter, au
 |---|---|
 | Desktop Intel i7-13700K + RTX 4070 | `hasEthernet: true` |
 | Desktop AMD 7800X3D + RTX 4070 SUPER | `hasEthernet: true` |
-| Portable Ryzen 7840HS + RTX 4060 Laptop | `true` si RJ45, sinon `false` |
+| Portable Ryzen 7840HS + RTX 4060 Laptop | **`false`** (dalle 1600p, pas de RJ45 — voir arbitrage) |
 | Mini-PC i5-12400 / UHD 730 | `hasEthernet: true` |
 
 ### Patch 2c — `src/engine/validation.ts`, dans l'objet retourné par `clampConfigToProfile` (après ligne 57)
@@ -199,12 +211,12 @@ La signature `isNeeded(cfg, goal, profile)` accepte déjà le profil.
 
 > Si la 2ᵉ assertion échoue, c'est que le seuil « gain ≥ 0,25 W » filtre la règle. Dans ce cas, réduire l'assertion à `isNeeded` seul (via un profil à `nicEeeEnabled: true`) — **ne pas** abaisser le seuil, il protège contre les gains inventés.
 
-### Vérification
+### Vérification — exécutée
 
 ```bash
-npx tsc --noEmit    # doit d'abord signaler 4 profils incomplets (preuve de couverture), puis 0
-npx vitest run      # 42 attendus
-npm run build
+npx tsc --noEmit    # 0 erreur (les 4 profils se sont bien signalés incomplets avant 2b)
+npx vitest run      # 42/42
+npm run build       # 809,32 kB / 239,46 kB gzip
 ```
 
 ---
@@ -264,10 +276,10 @@ Neuf propriétés, chacune tenue par un test nommé. Si l'une rougit, c'est la m
 # Definition of done
 
 - [x] `npx tsc --noEmit` : 0 erreur
-- [x] `npx vitest run` : 41/41
-- [x] `npm run build` : succès, 811,56 kB (239,72 kB gzip)
+- [x] `npx vitest run` : 42/42
+- [x] `npm run build` : succès, 809,32 kB (239,46 kB gzip)
 - [x] Aucune occurrence de « 39 tests » dans `src/`
-- [ ] Vague 2 : `npx vitest run` → 42/42
+- [x] Vague 2 : `npx vitest run` → 42/42
 - [ ] Export `profiles.toml` puis réimport : les 5 profils et l'autostart reviennent à l'identique
 - [ ] Export depuis l'UI : le toast orange liste `P3 : VRAM prefer_p5` et `P5 : timer 0,5 ms`
 - [ ] `npm run dev` : l'app démarre, les 6 onglets s'ouvrent, la matrice adaptative affiche 7 lignes

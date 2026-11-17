@@ -57,6 +57,8 @@ export interface HardwareProfile {
   gpuVramMaxMhz: number;
   gpuVramIdleMhz: number;
   hasDedicatedGpu: boolean;
+  /** Présence d'un contrôleur Ethernet cuivre. Conditionne la pertinence de l'EEE 802.3az. */
+  hasEthernet: boolean;
   maxDisplayHz: DisplayRefreshHz;
   note: string;
 }

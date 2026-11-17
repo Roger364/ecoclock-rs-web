@@ -55,6 +55,7 @@ export function clampConfigToProfile(cfg: HardwareConfig, profile: HardwareProfi
       : profile.gpuMaxClockMhz,
     gpuVramPolicy: hasDgpu ? cfg.gpuVramPolicy : "auto",
     gpuZeroRpmFanStop: hasDgpu ? cfg.gpuZeroRpmFanStop : false,
+    nicEeeEnabled: profile.hasEthernet ? cfg.nicEeeEnabled : false,
     nvmeIdleTimeoutMs: Math.min(5000, Math.max(50, Math.round(cfg.nvmeIdleTimeoutMs))),
     displayRefreshHz: displayHz,
     displayBrightnessPct: Math.min(100, Math.max(20, Math.round(cfg.displayBrightnessPct))),
