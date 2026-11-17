@@ -7,7 +7,7 @@ export const RUST_PROJECT_FILES: RustSourceFile[] = [
     summary: "Dépendances minimales officielles & profil release ultra-compact (LTO fat, opt-level z, strip, panic=abort).",
     content: `[package]
 name = "ecoclock"
-version = "0.4.2"
+version = "0.5.0"
 edition = "2021"
 rust-version = "1.80"
 description = "Utilitaire Windows léger, rapide et sûr d'underclocking multi-sous-systèmes et d'économie d'énergie"

@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Binaire + crate
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - run: npm ci
+
+      # Le crate n'existe pas sur le disque : il est reconstitué depuis les
+      # littéraux TypeScript, puis compilé et testé.
+      - run: npm run check:rust -- --keep
+
+      - name: Compiler le binaire portable
+        working-directory: .check-rust
+        env:
+          # CRT statique : un seul exe, aucun runtime VC++ à installer.
+          RUSTFLAGS: -C target-feature=+crt-static
+        run: cargo build --release --quiet
+
+      - name: Tester avant publication
+        working-directory: .check-rust
+        env:
+          RUSTFLAGS: -C target-feature=+crt-static
+        run: cargo test --quiet --all-targets
+
+      - name: Paqueter
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          New-Item -ItemType Directory -Path dist-release | Out-Null
+          Copy-Item ".check-rust\target\release\ecoclock.exe" "dist-release\ecoclock-$tag-windows-x64.exe"
+          Remove-Item -Recurse -Force ".check-rust\target"
+          Compress-Archive -Path ".check-rust\*" -DestinationPath "dist-release\ecoclock-crate-$tag.zip"
+          Get-FileHash "dist-release\*.exe" -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash.ToLower())  $(Split-Path $_.Path -Leaf)" } |
+            Set-Content "dist-release\SHA256SUMS.txt"
+          Get-ChildItem dist-release | Select-Object Name, Length
+
+      - name: Publier
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $files = Get-ChildItem dist-release -File | ForEach-Object { $_.FullName }
+          gh release create $tag @files --title "EcoClock-rs $tag" --generate-notes

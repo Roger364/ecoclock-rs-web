@@ -34,6 +34,17 @@ L'interface affiche des projections, pas des relevés. Ce tableau dit ce qui vie
 
 Le crate Rust lit les capteurs quand ils existent ; le configurateur web, lui, ne lit rien : il calcule.
 
+## Téléchargement
+
+Les binaires sont dans les [releases](https://github.com/Roger364/ecoclock-rs-web/releases) :
+
+- `ecoclock-<tag>-windows-x64.exe` — la GUI, CRT statique, aucun runtime à installer ;
+- `ecoclock-crate-<tag>.zip` — le crate complet, pour compiler soi-même ;
+- `SHA256SUMS.txt` — les empreintes, à comparer avec `Get-FileHash`.
+
+Le binaire n'est pas signé : Windows SmartScreen affichera un avertissement, c'est attendu.
+Une signature demanderait un certificat payant, hors de portée de ce projet.
+
 ## Démarrage
 
 ```bash
