@@ -6,6 +6,8 @@ embarqué les applique via les API Windows documentées, sans pilote noyau.
 
 **Feuille de route** : [ROADMAP.md](ROADMAP.md) — licence, intégration continue, releases, puis le reste.
 
+![Interface d'EcoClock-rs](docs/interface.png)
+
 ## Fonctionnalités
 
 - **5 profils** (éco-productivité, silence, jeu, veille active, stock) avec comparateur avant/après.
@@ -13,6 +15,21 @@ embarqué les applique via les API Windows documentées, sans pilote noyau.
 - **Script `.ps1` autonome** : applique le profil, sauvegarde le plan d'alimentation actif et sait le restaurer (`-Restore`).
 - **Audit de sûreté** avant application, matrice adaptative sur 7 situations, journal des appels Win32.
 - **Détection de capacités** : un réglage refusé par Windows est compté et annoncé, jamais ignoré en silence.
+
+## Mesuré ou modélisé
+
+L'interface affiche des projections, pas des relevés. Ce tableau dit ce qui vient d'un capteur et ce qui sort du modèle.
+
+| Grandeur affichée | Origine | Comment |
+|---|---|---|
+| Températures CPU/GPU, point chaud, RPM, dBA système | **modélisé** | `src/engine/physics.ts` : TDP, charge, résidence C-states, ambiance 22 °C |
+| Puissance paquet, consommation murale, €/an, CO₂ | **modélisé** | rendement PSU, tarif et mix paramétrables |
+| Temps d'exécution avant/après (ms) | **modélisé** | modèle de charge, pas un benchmark exécuté |
+| Valeurs écrites puis relues dans le plan d'alimentation | **mesuré** | `powrprof` côté Rust, relecture après écriture |
+| Effet du plafond 55 % et de `PROCFREQMAX` | **mesuré sur ce poste** | 775,5 → 1 088,5 ms (+40,4 %, 1 thread) ; 922,5 → 1 123,5 ms (+21,8 %) |
+| Température réelle du CPU | **indisponible** | `MSAcpi_ThermalZoneTemperature` absent sur ce poste |
+
+Le crate Rust lit les capteurs quand ils existent ; le configurateur web, lui, ne lit rien : il calcule.
 
 ## Démarrage
 
@@ -62,5 +79,4 @@ PLAN-ACTIONS.md              état du projet, décisions et pièges connus
 
 ## Licence
 
-Aucune licence n'est fournie : tous droits réservés par défaut. Ajoutez-en une si vous souhaitez
-autoriser la réutilisation.
+[MIT](LICENSE) — Copyright (c) 2026 Roger364.

@@ -1,13 +1,13 @@
 # Feuille de route
 
 État au 18/11/2026 : configurateur React + crate Rust embarqué, 43 tests TypeScript, 10 tests Rust,
-GUI réparée, dépôt public. Le détail technique, les décisions et les pièges sont dans
+GUI réparée, dépôt public. Phase 1 (crédibilité) faite. Le détail technique, les décisions et les pièges sont dans
 [PLAN-ACTIONS.md](PLAN-ACTIONS.md) ; ce document ne dit que **quoi faire ensuite, dans quel ordre**.
 
 L'ordre n'est pas arbitraire : un dépôt public doit d'abord être utilisable et honnête, ensuite
 automatisé, ensuite distribuable — les fonctionnalités viennent après.
 
-## Phase 1 — Crédibilité (≈ 1 h)
+## Phase 1 — Crédibilité (✅ faite le 18/11/2026, ≈ 1 h)
 
 | # | Action | Pourquoi | Fini quand |
 |---|---|---|---|
