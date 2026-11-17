@@ -309,7 +309,9 @@ La même migration s'applique à `baseline_snapshot.toml`, sinon un snapshot d'o
 ## 4.4 — Tests
 
 - **TypeScript** : le verrou de schéma exige désormais **exactement les 24 champs** de `HardwareConfig`, sans extension ; import d'un TOML legacy où les booléens remplacent les énumérations ; aller-retour `prefer_p5` / `high_0_5ms` ; valeur inconnue retombant sur le défaut.
-- **Rust** : migration des deux clés (dont le cas « clé canonique prioritaire »), aller-retour TOML des énumérations avec la forme exacte des chaînes, et table de vérité de `ignores_timer_resolution`.
+- **Rust** : migration des deux clés (dont le cas « clé canonique prioritaire »), aller-retour TOML des énumérations avec la forme exacte des chaînes, table de vérité de `ignores_timer_resolution`, et rechargement complet d'un fichier legacy par le vrai chemin `decode_profiles`.
+
+`npm run check:rust` lance maintenant `cargo check --all-targets` : sans cela, le code `#[cfg(test)]` du crate n'était jamais compilé par la garde, et les tests ajoutés n'auraient été vérifiés que par hasard.
 
 ## 4.5 — Le verrou couvre tout le fichier
 
@@ -322,7 +324,8 @@ Le test de schéma ne vérifiait que les blocs `[profiles.config]`. Il contrôle
 | `tsc --noEmit` | 0 erreur |
 | `vitest run` | **43/43** |
 | `vite build` | OK, 814,83 kB (240,87 kB gzip) |
-| `cargo check` | OK, 4 tests unitaires ajoutés |
+| `cargo check --all-targets` | OK — les tests du crate sont désormais compilés, pas seulement le binaire |
+| `cargo test` | **9/9** (5 ajoutés : migration, aller-retour, table de vérité, rechargement complet) |
 
 Non vérifié : l'interface (toast d'export, onglet « Source Rust », téléchargement `.zip`) n'a pas été ouverte.
 

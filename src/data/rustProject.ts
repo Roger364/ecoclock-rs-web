@@ -842,6 +842,24 @@ timer_resolution = "high_0_5ms"
         assert_eq!(cfg.get("gpu_vram_policy").and_then(toml::Value::as_str), Some("prefer_p5"));
         assert_eq!(cfg.get("timer_resolution").and_then(toml::Value::as_str), Some("high_0_5ms"));
     }
+
+    #[test]
+    fn decode_profiles_migre_un_fichier_ecrit_avant_la_vague_4() {
+        let store = ProfileStore::default_five_profiles();
+        let encoded = toml::to_string_pretty(&store).expect("encodage TOML");
+        // Réécrit chaque clé canonique en booléen historique, puis recharge par le vrai chemin.
+        let legacy = encoded
+            .replace(r#"gpu_vram_policy = "force_p8_idle""#, r#"gpu_force_p8_idle = true"#)
+            .replace(r#"gpu_vram_policy = "auto""#, r#"gpu_force_p8_idle = false"#)
+            .replace(r#"timer_resolution = "coalesced_15_6ms""#, r#"timer_coalescing = true"#)
+            .replace(r#"timer_resolution = "standard_1ms""#, r#"timer_coalescing = false"#);
+
+        let decoded = ConfigRepository::decode_profiles(&legacy).expect("migration TOML");
+        assert_eq!(decoded.profiles.len(), crate::domain::PROFILE_COUNT);
+        for (migrated, original) in decoded.profiles.iter().zip(store.profiles.iter()) {
+            assert_eq!(migrated.config, original.config);
+        }
+    }
 }
 `,
   },

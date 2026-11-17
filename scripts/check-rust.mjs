@@ -67,7 +67,7 @@ else if (!process.exitCode) {
 
   // Commande unique + shell : évite l'avertissement Node sur args non échappés,
   // et fonctionne sur Windows où `cargo` est résolu via le PATH du shell.
-  const cargo = spawnSync("cargo check --quiet", {
+  const cargo = spawnSync("cargo check --all-targets --quiet", {
     cwd: workDir,
     stdio: ["ignore", "inherit", "inherit"],
     shell: true,
@@ -78,7 +78,7 @@ else if (!process.exitCode) {
   } else if (cargo.status !== 0) {
     fail(`cargo check a retourné ${cargo.status} — le crate livré ne compile pas`);
   } else {
-    console.log("cargo check : OK — le crate livré compile");
+    console.log("cargo check --all-targets : OK — le crate et ses tests compilent");
   }
 }
 
