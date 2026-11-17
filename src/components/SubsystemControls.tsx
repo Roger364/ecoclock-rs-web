@@ -226,15 +226,15 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
                           aria-hidden
                           className="pointer-events-none absolute border-l border-dashed border-amber-400/70"
                           style={{
-                            left: `calc(8px + (100% - 16px) * ${markerRatio})`,
+                            left: `calc(7px + (100% - 15px) * ${markerRatio})`,
                             top: "1rem",
-                            height: "1.1rem",
+                            height: "6px",
                           }}
                         />
                         <span
                           aria-hidden
                           className="pointer-events-none absolute top-0 -translate-x-1/2 font-mono text-[9px] text-amber-300/90"
-                          style={{ left: `calc(8px + (100% - 16px) * ${markerRatio})` }}
+                          style={{ left: `calc(7px + (100% - 15px) * ${markerRatio})` }}
                         >
                           3,3 GHz
                         </span>
@@ -250,7 +250,7 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
                         const v = Number(e.target.value);
                         onUpdateConfig("cpuFreqCapMhz", v, `PowerWriteACValueIndex(SUB_PROCESSOR, PROCFREQMAX, ${v})`);
                       }}
-                      className="eco-slider w-full"
+                      className="eco-slider w-full block"
                       aria-label="Plafond de fréquence du processeur en MHz"
                       aria-valuetext={`${config.cpuFreqCapMhz} mégahertz`}
                     />

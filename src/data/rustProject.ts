@@ -2372,10 +2372,15 @@ impl eframe::App for EcoClockApp {
                 if power_plan::cpu_vendor() == power_plan::CpuVendor::Amd {
                     // Repere mesure sur Ryzen 9 5900X : le plafond n'a qu'un cran (~3,3 GHz).
                     // D'autres modeles peuvent descendre plus bas : un repere, pas une loi.
+                    // Limite a la piste : rect couvre aussi la valeur et le libelle, que le
+                    // trait ne doit pas traverser.
+                    let pad = 7.0;
+                    let track = (cols[0].spacing().slider_width - pad * 2.0).max(1.0);
                     let ratio = ((3300.0 - 800.0) / (5200.0 - 800.0)) as f32;
-                    let x = cpu_rect.left() + cpu_rect.width() * ratio;
+                    let x = cpu_rect.left() + pad + track * ratio;
+                    let y = cpu_rect.center().y;
                     cols[0].painter().line_segment(
-                        [egui::pos2(x, cpu_rect.top()), egui::pos2(x, cpu_rect.bottom())],
+                        [egui::pos2(x, y - 5.0), egui::pos2(x, y + 5.0)],
                         egui::Stroke::new(1.0_f32, egui::Color32::from_rgb(251, 191, 36)),
                     );
                 }
