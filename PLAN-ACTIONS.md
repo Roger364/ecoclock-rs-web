@@ -3,7 +3,7 @@
 Base : `rust-hardware-underclocking-utility4.zip` (17/11/2026, 54 fichiers, 16 121 lignes `src/`).
 Organisation en **vagues** : une vague = un ensemble de correctifs sans interaction entre eux, validable en une seule passe de vérification.
 
-**État vérifié à l'instant :** `tsc --noEmit` 0 erreur · `vitest run` **43/43** · `vite build` OK (~816 kB / 241,1 kB gzip) · `cargo check` OK sur le crate livré.
+**État vérifié à l'instant :** `tsc --noEmit` 0 erreur · `vitest run` **43/43** · `vite build` OK (~817 kB / 241,4 kB gzip) · `cargo check` OK sur le crate livré.
 Référence d'origine (v4 non modifiée) : 39 tests, 808,45 kB / 239,10 kB.
 
 | Vague | Contenu | Statut | Tests |
@@ -382,6 +382,24 @@ Binaire **debug** (le sous-système console reste actif, donc les `println!` son
 T6 a révélé un défaut réel : `$out -match ...` sur la sortie **multi-lignes** de `powercfg /import` laisse `$Matches` vide, donc `setactive` n'était jamais appelé alors que le script affichait `[OK]`. La restauration extrait maintenant le GUID de la sortie aplatie (`[regex]::Match`) et renvoie le code 1 avec un message rouge en cas d'échec.
 
 ---
+## Mesure réelle sur l'hôte (17/11/2026)
+
+Machine : Ryzen 9 5900X (12 cœurs / 24 threads), plan « Utilisation normale ». Charge fixe déterministe (xorshift, 24 threads ou 1 thread), 4 passes par phase, médiane, avec lecture du plafond appliqué avant et après chaque passe.
+
+| Phase | 1 thread | 24 threads |
+|---|---|---|
+| `PROCTHROTTLEMAX = 100` (stock) | 775,5 ms | 1 025 ms |
+| `PROCTHROTTLEMAX = 55` | 1 088,5 ms (**+40,4 %**) | 1 126,5 ms (+9,9 %) |
+| Retour à 100 | 775 ms, plafond relu 100/100 | — |
+
+Le plafond en pourcentage **agit réellement** : en mono-thread, où le débit suit la fréquence, 55 % coûte 29 % de débit. En 24 threads l'effet tombe à 10 % : le SMT et le boost partagent la fréquence, le débit agrégé ne suit plus linéairement.
+
+**Deux limites découvertes, à traiter ensuite :**
+
+- `PROCFREQMAX` (le curseur « plafond MHz » de l'UI) **n'existe pas** sur cette machine : `powercfg /q` ne renvoie que l'en-tête du plan. Le réglage est spécifique à certains firmwares Intel ; sur ce Ryzen, le curseur n'a aucun effet et le script `.ps1` généré affiche « Le mode de gestion, sous-groupe ou paramètre d'alimentation spécifié n'existe pas ». Il faut détecter les réglages réellement exposés et désactiver/annoncer les autres.
+- La température CPU n'est pas exposée via `MSAcpi_ThermalZoneTemperature` sur ce poste ; toute mesure thermique nécessitera un capteur dédié (LibreHardwareMonitor ou équivalent).
+
+---
 # Journal des décisions
 
 | Décision | Raison |
@@ -405,8 +423,9 @@ T6 a révélé un défaut réel : `$out -match ...` sur la sortie **multi-lignes
 - [x] Aucune occurrence de « 39 tests » dans `src/`
 - [x] Vague 2 : `npx vitest run` → 43/43
 - [x] Validation en Windows Sandbox : 9 tests, dont migration legacy et restauration `.ps1`
-- [ ] Export `profiles.toml` puis réimport : les 5 profils et l'autostart reviennent à l'identique
-- [ ] Export depuis l'UI : un seul toast vert, plus aucune perte (code en place, non vu à l'écran)
+- [x] Export `profiles.toml` puis réimport depuis l'UI : 5 profils + autostart rechargés
+- [x] Export depuis l'UI : un seul toast vert, plus aucune perte (vérifié dans le navigateur)
 - [x] `npm run check:rust` : 21 fichiers extraits, `cargo check` OK
 - [x] Vague 4 : import d'un `profiles.toml` legacy couvert côté Rust et côté TypeScript
-- [ ] `npm run dev` : l'app démarre, les 6 onglets s'ouvrent, la matrice adaptative affiche 7 lignes
+- [x] `npm run dev` : l'app démarre, les 7 onglets s'ouvrent, la matrice adaptative affiche 7 lignes
+- [x] Bundle **single-file** (`vite preview`) : 7 onglets, 7 lignes, aucun script externe
