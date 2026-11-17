@@ -7,11 +7,13 @@ Base : `rust-hardware-underclocking-utility4.zip` (17/11/2026, 54 fichiers). Ce 
 ```
 tsc --noEmit            0 erreur
 vitest run              43/43
-vite build              821,99 kB (242,87 kB gzip), bundle single-file
+vite build              823,00 kB (243,25 kB gzip), bundle single-file
 cargo check --all-targets  OK (21 fichiers, 3 warnings de code mort)
+cargo test                 10/10
 ecoclock --check        policies_absentes=aucun
 sandbox Windows         13 réglages appliqués, 1 ignoré (IGPU_BIAS), restauration 100 %
 mesure hôte             plafond 55 % : +40,4 % ; PROCFREQMAX 2000 MHz : +21,8 % mono-thread
+binaire release         GUI + headless validés (sandbox 4/4, fenêtre réelle sur l'hôte)
 ```
 
 ---
@@ -27,6 +29,7 @@ mesure hôte             plafond 55 % : +40,4 % ; PROCFREQMAX 2000 MHz : +21,8 %
 | 5 | Restauration `.ps1` réellement fonctionnelle | sandbox ×2 | `3ad278a` |
 | 6 | Recette UI + mesure réelle du plafond | navigateur + hôte | `2ddf7fc` |
 | 7 | Détection de capacités par code retour d'écriture | sandbox 13/1 | `d04ea13` |
+| 8 | Binaire release testé ; GUI réparée (débordement au démarrage) | sandbox 4/4 + fenêtre hôte | — |
 
 La vague 1 annonçait une perte inévitable (VRAM `prefer_p5`, timer 0,5 ms). La vague 4 l'a supprimée à la source : ces deux états sont désormais des champs Rust de première classe, l'export n'a plus d'extension web et l'avertissement a disparu avec sa cause.
 
@@ -36,11 +39,9 @@ La vague 1 annonçait une perte inévitable (VRAM `prefer_p5`, timer 0,5 ms). La
 
 Par ordre de valeur. Chaque ligne dit **pourquoi** et **comment vérifier**.
 
-1. **Tester le binaire release dans le sandbox.** Jamais fait : le sous-système GUI ne garde pas la console, donc le comportement diffère du debug. Vérification : appliquer P1 puis `--restore-baseline`, contrôler `powercfg /q` et l'absence de fuite de fenêtre console.
+1. **Verrouiller le contrat du `.ps1` par un test exécutable.** Aujourd'hui seules des assertions de chaîne couvrent le générateur. Un test pourrait exécuter le script dans le sandbox et exiger `[OK] … X réglage(s), Y ignoré(s)` — c'est le seul moyen d'attraper une régression comme celle de la vague 5.
 
-2. **Verrouiller le contrat du `.ps1` par un test exécutable.** Aujourd'hui seules des assertions de chaîne couvrent le générateur. Un test pourrait exécuter le script dans le sandbox et exiger `[OK] … X réglage(s), Y ignoré(s)` — c'est le seul moyen d'attraper une régression comme celle de la vague 5.
-
-3. **Sonde thermique dédiée (optionnel).** Sans elle, aucune campagne chaleur/bruit n'est possible : `MSAcpi_ThermalZoneTemperature` est absent sur ce poste.
+2. **Sonde thermique dédiée (optionnel).** Sans elle, aucune campagne chaleur/bruit n'est possible : `MSAcpi_ThermalZoneTemperature` est absent sur ce poste.
 
 ---
 
@@ -80,6 +81,7 @@ Dix propriétés, chacune tenue par un test nommé. Si l'une rougit, c'est la mo
 | Binaire de test en CRT statique | l'image Sandbox n'a pas le runtime Visual C++ → `0xC0000135` avant tout code applicatif |
 | Mesures sur l'hôte sous élévation, restauration vérifiée | seule façon de connaître l'effet réel ; l'état initial est relu après coup |
 | Garder le curseur MHz avec la mention « plafond indicatif » | mesuré partiel (+21,8 %), donc utile mais pas une limite dure |
+| Checksum des benchmarks en `wrapping_add` | les valeurs sommées sont des hashes, pas des durées ; le débordement tuait la GUI |
 
 ---
 
@@ -130,6 +132,19 @@ Même protocole, 1 thread, 4 passes, valeur relue avant et après chaque passe.
 
 Un vrai verrou à 2 000 MHz (54 % de la base 3 701 MHz) devrait coûter ~+85 % ; on n'observe que +22 %. Le réglage **agit** — il n'est pas décoratif — mais le firmware AMD l'honore **partiellement** : c'est un plafond indicatif, pas une limite dure. Le curseur reste utile à condition de le dire.
 
+## Binaire release
+
+Sous-système GUI : les commandes headless doivent être lancées avec `Start-Process -Wait -PassThru`, et `$args` **ne peut pas** servir de nom de paramètre (variable automatique : le binaire était lancé sans argument).
+
+| Test | Résultat |
+|---|---|
+| `--check` sans fichier de profils | code 0, schéma canonique créé |
+| `--apply-profile 3 --headless` | 55 appliqué |
+| `--restore-baseline` | 100 restauré |
+| GUI | vivante après 6 s, fenêtre réelle (sandbox et hôte) |
+
+Le premier passage a révélé que la GUI **ne démarrait jamais** : `bench_multithread_aggregate` additionnait des états LCG de 64 bits, la somme débordait à chaque lancement, et `panic = "abort"` tuait le processus (`0xC0000409`). En debug la panique était avalée par winit, d'où une fenêtre morte mais un processus vivant. Corrigé par un repli `wrapping_add`, verrouillé par un test.
+
 ## Détection de capacités
 
 | Sonde | Verdict |
@@ -149,7 +164,8 @@ Détection retenue : le **code retour de l'écriture**. Rust le consigne dans `A
 3. **`$ErrorActionPreference = 'Stop'` + commande native** : tout stderr devient un `NativeCommandError` terminant. Repasser en `Continue` le temps de l'appel.
 4. **`powercfg /q` n'est pas un test de capacité** : une policy sans valeur stockée n'est pas affichée, alors qu'elle existe et s'écrit.
 5. **`PROCFREQMAX` est un plafond indicatif sur AMD** : mesuré à +21,8 % pour 2 000 MHz au lieu des ~+85 % attendus d'un verrou dur.
-6. **Clés `PowerSchemes` protégées** : même élevé, un administrateur ne peut pas supprimer une valeur écrite via l'API ; il faut passer par l'API elle-même.
+6. **Somme de checksums en `u64`** : additionner des hashes (états LCG) déborde ; avec `overflow-checks = true` et `panic = abort`, cela tue la GUI avant la première frame.
+7. **Clés `PowerSchemes` protégées** : même élevé, un administrateur ne peut pas supprimer une valeur écrite via l'API ; il faut passer par l'API elle-même.
 
 ---
 

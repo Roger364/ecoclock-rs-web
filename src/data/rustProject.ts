@@ -1883,8 +1883,14 @@ fn bench_multithread_aggregate() -> f64 {
             })
         })
         .collect();
-    let total: u64 = handles.into_iter().filter_map(|h| h.join().ok()).sum();
-    std::hint::black_box(total);
+    // Chaque thread renvoie un état LCG (pas une durée) : la somme ne sert qu'à empêcher
+    // l'élimination du calcul. sum() débordait à chaque démarrage (overflow-checks = true),
+    // ce qui tuait la GUI en release (panic = abort). D'où le repli modulo 2^64 explicite.
+    let checksum = handles
+        .into_iter()
+        .filter_map(|h| h.join().ok())
+        .fold(0u64, u64::wrapping_add);
+    std::hint::black_box(checksum);
     t0.elapsed().as_secs_f64() * 1000.0
 }
 
@@ -1903,6 +1909,27 @@ fn bench_timer_sleep_jitter() -> f64 {
     let t0 = Instant::now();
     thread::sleep(Duration::from_millis(1));
     (t0.elapsed().as_secs_f64() * 1000.0 - 1.0).max(0.0)
+}
+
+#[cfg(test)]
+mod tests_bench {
+    use super::*;
+
+    /// Verrou : la suite de benchmarks s'exécute au démarrage de la GUI. Une arithmétique qui
+    /// déborde ici tue l'application avant la première frame (panic = abort en release).
+    #[test]
+    fn les_benchmarks_ne_debordent_pas() {
+        let suite = run_real_world_benchmarks();
+        for value in [
+            suite.lz_compress_32mb_ms,
+            suite.structured_parse_ms,
+            suite.parallel_query_ms,
+            suite.disk_4k_wake_ms,
+            suite.scheduler_jitter_ms,
+        ] {
+            assert!(value.is_finite() && value >= 0.0, "duree invalide : {}", value);
+        }
+    }
 }
 `,
   },
