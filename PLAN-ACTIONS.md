@@ -3,7 +3,7 @@
 Base : `rust-hardware-underclocking-utility4.zip` (17/11/2026, 54 fichiers, 16 121 lignes `src/`).
 Organisation en **vagues** : une vague = un ensemble de correctifs sans interaction entre eux, validable en une seule passe de vérification.
 
-**État vérifié à l'instant :** `tsc --noEmit` 0 erreur · `vitest run` **43/43** · `vite build` OK (~817 kB / 241,4 kB gzip) · `cargo check` OK sur le crate livré.
+**État vérifié à l'instant :** `tsc --noEmit` 0 erreur · `vitest run` **43/43** · `vite build` OK (~822 kB / 242,9 kB gzip) · `cargo check` OK sur le crate livré.
 Référence d'origine (v4 non modifiée) : 39 tests, 808,45 kB / 239,10 kB.
 
 | Vague | Contenu | Statut | Tests |
@@ -396,8 +396,29 @@ Le plafond en pourcentage **agit réellement** : en mono-thread, où le débit s
 
 **Deux limites découvertes, à traiter ensuite :**
 
-- `PROCFREQMAX` (le curseur « plafond MHz » de l'UI) **n'existe pas** sur cette machine : `powercfg /q` ne renvoie que l'en-tête du plan. Le réglage est spécifique à certains firmwares Intel ; sur ce Ryzen, le curseur n'a aucun effet et le script `.ps1` généré affiche « Le mode de gestion, sous-groupe ou paramètre d'alimentation spécifié n'existe pas ». Il faut détecter les réglages réellement exposés et désactiver/annoncer les autres.
+- `PROCFREQMAX` (le curseur « plafond MHz ») n'est **pas affiché** par `powercfg /q` tant que le plan n'en stocke pas la valeur — mais la policy existe dans le catalogue Windows et `PowerWriteACValueIndex` accepte l'écriture. Conclusion corrigée : l'absence d'affichage ne prouve pas l'inapplicabilité, et une écriture acceptée ne prouve pas que le firmware l'honore. Seule une mesure de fréquence trancherait.
 - La température CPU n'est pas exposée via `MSAcpi_ThermalZoneTemperature` sur ce poste ; toute mesure thermique nécessitera un capteur dédié (LibreHardwareMonitor ou équivalent).
+
+---
+## Détection de capacités (17/11/2026)
+
+Trois sondes ont été évaluées, deux sont inutilisables :
+
+| Sonde | Verdict |
+|---|---|
+| `PowerReadACValueIndex` | réussit **même** pour un réglage absent (val=0) → aveugle |
+| `powercfg /q` | n'affiche que les policies ayant une valeur stockée → faux négatifs |
+| `PowerEnumerate(ACCESS_INDIVIDUAL_SETTING)` | liste le catalogue Windows, pas ce que le firmware honore |
+
+La détection retenue est donc **l'échec réel de l'écriture** :
+
+- **Rust** : `apply_setting()` remplace les `let _ = write_ac_dc(...)`. Un code retour non nul pousse le nom dans `ApplyReport::unsupported_items` ; la barre d'état de l'UI affiche « N non exposé(s) par le firmware ».
+- **`.ps1` généré** : `Set-PowerIndex` compare les codes retour AC et DC, compte les succès et les refus, puis affiche `[INFO] Refusés par Windows (policy absente ou verrouillée) : …` et `[OK] Profil Pn appliqué : X réglage(s), Y ignoré(s)`. Le `$ErrorActionPreference` repasse en `Continue` le temps des appels : sous `Stop`, le stderr natif devient un `NativeCommandError` qui tue le script.
+- **Diagnostic** : `ecoclock.exe --check` ajoute `policies_absentes=…`, calculé par énumération du catalogue (sans écriture).
+
+Preuve en sandbox : `IGPU_BIAS` (machine sans iGPU) est refusé et annoncé — `[OK] Profil P1 appliqué : 13 réglage(s), 1 ignoré(s)`.
+
+Limite assumée : Windows accepte l'écriture d'une policy connue sans garantir que le firmware l'applique. La détection dit « refusé », jamais « sans effet ».
 
 ---
 # Journal des décisions
@@ -419,9 +440,10 @@ Le plafond en pourcentage **agit réellement** : en mono-thread, où le débit s
 
 - [x] `npx tsc --noEmit` : 0 erreur
 - [x] `npx vitest run` : 43/43
-- [x] `npm run build` : succès, ~817 kB (241,4 kB gzip)
+- [x] `npm run build` : succès, ~822 kB (242,9 kB gzip)
 - [x] Aucune occurrence de « 39 tests » dans `src/`
 - [x] Vague 2 : `npx vitest run` → 43/43
+- [x] Détection de capacités : écritures refusées comptées et annoncées (Rust + `.ps1` + `--check`)
 - [x] Validation en Windows Sandbox : 9 tests, dont migration legacy et restauration `.ps1`
 - [x] Export `profiles.toml` puis réimport depuis l'UI : 5 profils + autostart rechargés
 - [x] Export depuis l'UI : un seul toast vert, plus aucune perte (vérifié dans le navigateur)

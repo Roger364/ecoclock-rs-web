@@ -188,12 +188,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if args.check_only {
         let current = controller.read_current_config();
         let props = optimizer::propose_optimizations(&current);
+        let unsupported = crate::platform::power_plan::unsupported_settings();
         println!(
-            "EcoClock check | admin={} | cpu_cap={} MHz | hz={} | propositions={}",
+            "EcoClock check | admin={} | cpu_cap={} MHz | hz={} | propositions={} | policies_absentes={}",
             controller.is_admin(),
             current.cpu_freq_cap_mhz,
             current.display_refresh_hz,
-            props.len()
+            props.len(),
+            if unsupported.is_empty() { "aucun".to_string() } else { unsupported.join(",") }
         );
         return Ok(());
     }
@@ -973,6 +975,8 @@ use gpu_nvml::GpuController;
 pub struct ApplyReport {
     pub applied_items: Vec<&'static str>,
     pub skipped_requires_admin: Vec<&'static str>,
+    /// Écritures refusées par Windows : policy absente de son catalogue ou verrouillée.
+    pub unsupported_items: Vec<&'static str>,
     pub warnings: Vec<String>,
 }
 
@@ -1333,6 +1337,104 @@ fn read_ac(scheme: *const windows::core::GUID, sub: &windows::core::GUID, settin
     }
 }
 
+/// Certains réglages ne sont pas exposés par le firmware (ex. PROCFREQMAX sur AMD).
+/// On lit avant d'écrire : un réglage absent est compté dans unsupported_items,
+/// jamais ignoré en silence ni signalé comme appliqué.
+#[cfg(windows)]
+fn apply_setting(
+    scheme: *const windows::core::GUID,
+    sub: &windows::core::GUID,
+    setting: &windows::core::GUID,
+    val: u32,
+    name: &'static str,
+    report: &mut ApplyReport,
+) {
+    if read_ac(scheme, sub, setting).is_none() {
+        report.unsupported_items.push(name);
+        return;
+    }
+    if !write_ac_dc(scheme, sub, setting, val) {
+        report.unsupported_items.push(name);
+    }
+}
+
+/// Énumère les GUID de réglages réellement présents dans un sous-groupe du plan actif.
+/// C'est la seule sonde fiable : PowerReadACValueIndex réussit même pour un réglage absent.
+#[cfg(windows)]
+fn scheme_settings(
+    scheme: *const windows::core::GUID,
+    sub: &windows::core::GUID,
+) -> Vec<windows::core::GUID> {
+    use windows::Win32::{
+        Foundation::{ERROR_NO_MORE_ITEMS, ERROR_SUCCESS},
+        System::Power::{PowerEnumerate, ACCESS_INDIVIDUAL_SETTING},
+    };
+
+    let mut found = Vec::new();
+    let mut index = 0u32;
+    loop {
+        let mut raw = [0u8; 16];
+        let mut size = raw.len() as u32;
+        let rc = unsafe {
+            PowerEnumerate(
+                None,
+                Some(scheme),
+                Some(sub),
+                ACCESS_INDIVIDUAL_SETTING,
+                index,
+                Some(raw.as_mut_ptr()),
+                &mut size,
+            )
+        };
+        if rc == ERROR_NO_MORE_ITEMS || rc != ERROR_SUCCESS {
+            break;
+        }
+        // SAFETY: le tampon fait 16 octets, taille exacte d'un GUID, et reste aligné par valeur.
+        found.push(unsafe { std::ptr::read_unaligned(raw.as_ptr().cast::<windows::core::GUID>()) });
+        index += 1;
+    }
+    found
+}
+
+/// Liste les policies CPU absentes du catalogue Windows, sans rien modifier.
+#[cfg(windows)]
+pub fn unsupported_settings() -> Vec<&'static str> {
+    use guids::*;
+    use windows::Win32::{
+        Foundation::{HLOCAL, LocalFree},
+        System::Power::PowerGetActiveScheme,
+    };
+
+    unsafe {
+        let mut scheme = std::ptr::null_mut();
+        if PowerGetActiveScheme(None, &mut scheme).is_err() || scheme.is_null() {
+            return Vec::new();
+        }
+        let present = scheme_settings(scheme, &SUB_PROCESSOR);
+        let probes: [(&windows::core::GUID, &'static str); 6] = [
+            (&PROCTHROTTLEMIN, "PROCTHROTTLEMIN"),
+            (&PROCTHROTTLEMAX, "PROCTHROTTLEMAX"),
+            (&PROCFREQMAX, "PROCFREQMAX"),
+            (&PERFBOOSTMODE, "PERFBOOSTMODE"),
+            (&PERFEPP, "PERFEPP"),
+            (&IDLEDISABLE, "IDLEDISABLE"),
+        ];
+        let missing = probes
+            .iter()
+            .filter(|(guid, _)| !present.contains(guid))
+            .map(|(_, name)| *name)
+            .collect();
+        let _ = LocalFree(HLOCAL(scheme.cast()));
+        missing
+    }
+}
+
+/// Hors Windows, aucun plan d'alimentation : rien à signaler.
+#[cfg(not(windows))]
+pub fn unsupported_settings() -> Vec<&'static str> {
+    Vec::new()
+}
+
 pub fn apply_user_settings(cfg: &HardwareConfig, report: &mut ApplyReport) {
     #[cfg(windows)]
     {
@@ -1350,22 +1452,22 @@ pub fn apply_user_settings(cfg: &HardwareConfig, report: &mut ApplyReport) {
             }
 
             let mhz_val = if cfg.cpu_freq_cap_mhz >= 5200 { 0 } else { cfg.cpu_freq_cap_mhz };
-            let _ = write_ac_dc(scheme_ptr, &SUB_PROCESSOR, &PROCTHROTTLEMIN, cfg.cpu_min_percent);
-            let _ = write_ac_dc(scheme_ptr, &SUB_PROCESSOR, &PROCTHROTTLEMAX, cfg.cpu_max_percent);
-            let _ = write_ac_dc(scheme_ptr, &SUB_PROCESSOR, &PROCFREQMAX, mhz_val);
-            let _ = write_ac_dc(scheme_ptr, &SUB_PROCESSOR, &PERFBOOSTMODE, cfg.cpu_turbo.to_powercfg_index());
-            let _ = write_ac_dc(scheme_ptr, &SUB_PROCESSOR, &PERFEPP, cfg.cpu_epp_percent);
-            let _ = write_ac_dc(scheme_ptr, &SUB_PROCESSOR, &IDLEDISABLE, u32::from(!cfg.cpu_deep_cstates));
-            let _ = write_ac_dc(scheme_ptr, &SUB_PCIEXPRESS, &PCIE_ASPM, cfg.pcie_aspm.to_powercfg_index());
-            let _ = write_ac_dc(scheme_ptr, &SUB_USB, &USB_SELECTIVE, u32::from(cfg.usb_selective_suspend));
-            let _ = write_ac_dc(scheme_ptr, &SUB_IGPU, &IGPU_BIAS, if cfg.igpu_eco_mode { 0 } else { 2 });
+            apply_setting(scheme_ptr, &SUB_PROCESSOR, &PROCTHROTTLEMIN, cfg.cpu_min_percent, "PROCTHROTTLEMIN", report);
+            apply_setting(scheme_ptr, &SUB_PROCESSOR, &PROCTHROTTLEMAX, cfg.cpu_max_percent, "PROCTHROTTLEMAX", report);
+            apply_setting(scheme_ptr, &SUB_PROCESSOR, &PROCFREQMAX, mhz_val, "PROCFREQMAX", report);
+            apply_setting(scheme_ptr, &SUB_PROCESSOR, &PERFBOOSTMODE, cfg.cpu_turbo.to_powercfg_index(), "PERFBOOSTMODE", report);
+            apply_setting(scheme_ptr, &SUB_PROCESSOR, &PERFEPP, cfg.cpu_epp_percent, "PERFEPP", report);
+            apply_setting(scheme_ptr, &SUB_PROCESSOR, &IDLEDISABLE, u32::from(!cfg.cpu_deep_cstates), "IDLEDISABLE", report);
+            apply_setting(scheme_ptr, &SUB_PCIEXPRESS, &PCIE_ASPM, cfg.pcie_aspm.to_powercfg_index(), "PCIE_ASPM", report);
+            apply_setting(scheme_ptr, &SUB_USB, &USB_SELECTIVE, u32::from(cfg.usb_selective_suspend), "USB_SELECTIVE", report);
+            apply_setting(scheme_ptr, &SUB_IGPU, &IGPU_BIAS, if cfg.igpu_eco_mode { 0 } else { 2 }, "IGPU_BIAS", report);
 
             let wifi_idx = match cfg.wifi_power {
                 WifiPower::CamMaxPerf => 0,
                 WifiPower::MediumPsp => 2,
                 WifiPower::MaxPsp => 3,
             };
-            let _ = write_ac_dc(scheme_ptr, &SUB_WIFI, &WIFI_PSM, wifi_idx);
+            apply_setting(scheme_ptr, &SUB_WIFI, &WIFI_PSM, wifi_idx, "WIFI_PSM", report);
 
             // Active toutes les modifications en une seule transaction noyau (< 2 ms)
             let _ = PowerSetActiveScheme(None, Some(scheme_ptr));
@@ -1392,18 +1494,18 @@ pub fn apply_admin_settings(cfg: &HardwareConfig, report: &mut ApplyReport) {
         unsafe {
             let mut scheme_ptr = std::ptr::null_mut();
             if PowerGetActiveScheme(None, &mut scheme_ptr).is_ok() && !scheme_ptr.is_null() {
-                let _ = write_ac_dc(scheme_ptr, &SUB_PROCESSOR, &CPMINCORES, cfg.cpu_min_active_cores);
+                apply_setting(scheme_ptr, &SUB_PROCESSOR, &CPMINCORES, cfg.cpu_min_active_cores, "CPMINCORES", report);
 
                 let noppme = u32::from(cfg.nvme_apst != NvmeApst::Ps0Only);
-                let _ = write_ac_dc(scheme_ptr, &SUB_DISK, &NVME_NOPPME, noppme);
-                let _ = write_ac_dc(scheme_ptr, &SUB_DISK, &NVME_IDLE_MS, cfg.nvme_idle_timeout_ms);
+                apply_setting(scheme_ptr, &SUB_DISK, &NVME_NOPPME, noppme, "NVME_NOPPME", report);
+                apply_setting(scheme_ptr, &SUB_DISK, &NVME_IDLE_MS, cfg.nvme_idle_timeout_ms, "NVME_IDLE_MS", report);
 
                 let alpm_idx = match cfg.sata_alpm {
                     SataAlpm::Active => 0,
                     SataAlpm::Hipm => 1,
                     SataAlpm::DipmSlumber => 3, // HIPM + DIPM + DevSleep
                 };
-                let _ = write_ac_dc(scheme_ptr, &SUB_DISK, &AHCI_ALPM, alpm_idx);
+                apply_setting(scheme_ptr, &SUB_DISK, &AHCI_ALPM, alpm_idx, "AHCI_ALPM", report);
 
                 let _ = PowerSetActiveScheme(None, Some(scheme_ptr));
                 let _ = LocalFree(HLOCAL(scheme_ptr.cast()));
@@ -2071,9 +2173,10 @@ impl EcoClockApp {
         self.after_tel = self.ctrl.sample_telemetry(&self.working);
         self.after_bench = telemetry::run_real_world_benchmarks();
         self.status_msg = format!(
-            "Appliqué ({} groupes) | {} ignoré(s) faute de droits Admin",
+            "Appliqué ({} groupes) | {} ignoré(s) faute de droits Admin | {} non exposé(s) par le firmware",
             rep.applied_items.len(),
-            rep.skipped_requires_admin.len()
+            rep.skipped_requires_admin.len(),
+            rep.unsupported_items.len()
         );
     }
 }

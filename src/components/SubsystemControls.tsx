@@ -231,6 +231,10 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
                     <span className="text-emerald-400/80">{Math.round(hardware.cpuBaseMhz * 0.92)} MHz (Sweet-spot)</span>
                     <span>{hardware.cpuFreqMaxMhz} MHz (Turbo)</span>
                   </div>
+                  <p className="mt-1 text-[10px] leading-snug text-amber-300/70">
+                    Windows accepte la valeur, mais le firmware peut l'ignorer : vérifiez la fréquence réelle après
+                    application. Un refus est compté et signalé, jamais passé sous silence.
+                  </p>
                 </ControlRow>
 
                 {/* Turbo Boost Mode */}

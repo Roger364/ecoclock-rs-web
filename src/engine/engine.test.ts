@@ -630,6 +630,10 @@ describe("blindage de la désérialisation (profils, autostart, conditions & TOM
     expect(desktopScript).toContain("baseline-scheme.pow");
     expect(desktopScript).toContain("nvidia-smi.exe -pl 132");
     expect(desktopScript).toContain("nvidia-smi.exe -lgc 210,1680");
+    // Détection de capacités : un réglage absent du firmware est ignoré et compté, jamais appliqué à l'aveugle.
+    expect(desktopScript).toContain("$script:Skipped.Add($Name)");
+    expect(desktopScript).toContain("Refusés par Windows");
+    expect(desktopScript).toContain("'PROCFREQMAX'");
     // Aucune ligne exécutable ne commence par Remove-Item (l'injection de retour ligne est neutralisée en commentaire)
     const injectedLine = desktopScript.split(/\r?\n/).some((l) => l.trim().startsWith("Remove-Item"));
     expect(injectedLine).toBe(false);
