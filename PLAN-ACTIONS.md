@@ -311,6 +311,10 @@ La même migration s'applique à `baseline_snapshot.toml`, sinon un snapshot d'o
 - **TypeScript** : le verrou de schéma exige désormais **exactement les 24 champs** de `HardwareConfig`, sans extension ; import d'un TOML legacy où les booléens remplacent les énumérations ; aller-retour `prefer_p5` / `high_0_5ms` ; valeur inconnue retombant sur le défaut.
 - **Rust** : migration des deux clés (dont le cas « clé canonique prioritaire »), aller-retour TOML des énumérations avec la forme exacte des chaînes, et table de vérité de `ignores_timer_resolution`.
 
+## 4.5 — Le verrou couvre tout le fichier
+
+Le test de schéma ne vérifiait que les blocs `[profiles.config]`. Il contrôle désormais aussi les 3 clés racine (`active_slot`, `show_tooltips`, `adaptive_enabled`) et les 6 clés de `[autostart]`. Une clé mal orthographiée serait ignorée en silence par serde, faute de `deny_unknown_fields` côté Rust.
+
 ## Vérification
 
 | Commande | Résultat |
@@ -337,7 +341,7 @@ Dix propriétés, chacune tenue par un test nommé. Si l'une rougit, c'est la mo
 | Aucun gain inventé (< 0,25 W rejeté) | « toute proposition … économise réellement ≥ 0,3 W » |
 | Fenêtre de confirmation réelle de 2,5 s | « exige une vraie fenêtre temporelle » |
 | `.ps1` non injectable, sans NVML sur iGPU | « buildWindowsPowerShellScript génère un script sûr » |
-| **Schéma TOML = 24 champs Rust, exactement, sans extension** | « verrouille le schéma : [profiles.config] contient exactement … » |
+| **Schéma complet : 3 clés racine + 6 clés `[autostart]` + 24 champs, exactement** | « verrouille le schéma : [profiles.config] contient exactement … » |
 | **Les 3 états (prefer_p5, 0,5 ms) survivent à l'aller-retour** | « le schéma à 3 états survit à l'aller-retour TOML » |
 | **Un TOML legacy à booléens reste lisible** | « parseProfilesToml décode un TOML legacy … » |
 

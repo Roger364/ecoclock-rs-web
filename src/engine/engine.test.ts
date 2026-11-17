@@ -684,6 +684,29 @@ describe("blindage de la désérialisation (profils, autostart, conditions & TOM
       expect(new Set(keys)).toEqual(new Set(RUST_FIELDS));
       expect(keys).toHaveLength(RUST_FIELDS.length);
     }
+
+    // Contrat complet : la racine et [autostart] sont lus par serde ; une clé mal nommée
+    // y serait silencieusement ignorée, faute de deny_unknown_fields côté Rust.
+    const header = toml.split("[[profiles]]")[0];
+    const rootPart = header.split("[autostart]")[0];
+    const autostartPart = header.split("[autostart]")[1] ?? "";
+    const keyList = (part: string) =>
+      part
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0 && !line.startsWith("#") && line.includes("="))
+        .map((line) => line.slice(0, line.indexOf("=")).trim())
+        .sort();
+
+    expect(keyList(rootPart)).toEqual(["active_slot", "adaptive_enabled", "show_tooltips"]);
+    expect(keyList(autostartPart)).toEqual([
+      "boot_profile_slot",
+      "enabled",
+      "method",
+      "restore_on_shutdown",
+      "safe_boot_delay_sec",
+      "start_minimized",
+    ]);
   });
 
   it("le schéma à 3 états survit à l'aller-retour TOML (plus aucune perte web → Rust)", () => {
