@@ -1,7 +1,7 @@
 # Feuille de route
 
 État au 18/11/2026 : configurateur React + crate Rust embarqué, 43 tests TypeScript, 10 tests Rust,
-GUI réparée, dépôt public. Phases 1 et 2 faites. Le détail technique, les décisions et les pièges sont dans
+GUI réparée, dépôt public. Phases 1 à 3 faites. Le détail technique, les décisions et les pièges sont dans
 [PLAN-ACTIONS.md](PLAN-ACTIONS.md) ; ce document ne dit que **quoi faire ensuite, dans quel ordre**.
 
 L'ordre n'est pas arbitraire : un dépôt public doit d'abord être utilisable et honnête, ensuite
@@ -22,12 +22,14 @@ automatisé, ensuite distribuable — les fonctionnalités viennent après.
 | 4 | GitHub Actions : `tsc`, `vitest`, `vite build`, `check:rust` + `cargo test` | aujourd'hui rien ne protège `main` ; les 53 tests n'existent que sur cette machine | workflow vert sur un push de test |
 | 5 | Badges (tests, build) | l'état se lit en un coup d'œil | badges dans le README, alignés sur les vrais chiffres |
 
-## Phase 3 — Livraison (≈ 0,5 j)
+## Phase 3 — Livraison (✅ faite le 17/11/2026, ≈ 0,5 j)
 
 | # | Action | Pourquoi | Fini quand |
 |---|---|---|---|
-| 6 | Release automatique : `ecoclock.exe` (release), zip du crate, `.ps1` | un utilisateur ne devrait pas avoir à compiler pour essayer | tag `v0.5.0` avec trois assets téléchargeables |
-| 7 | Documenter SmartScreen | un exe non signé déclenche un avertissement ; mieux vaut l'expliquer que le subir | note dans le README, aucune signature prétendue |
+| 6 | Release automatique : exe portable, zip du crate, `SHA256SUMS.txt` | un utilisateur ne devrait pas avoir à compiler pour essayer | tag `v0.5.0` publié, trois assets ✅ |
+| 7 | Documenter SmartScreen ✅ | un exe non signé déclenche un avertissement ; mieux vaut l'expliquer que le subir | note dans le README, aucune signature prétendue |
+
+Le `.ps1` n'est pas un asset de release : il est généré par l'application pour le profil choisi, avec son `-Restore`.
 
 ## Phase 4 — Produit (ordre de valeur)
 

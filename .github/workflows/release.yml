@@ -45,9 +45,13 @@ jobs:
           Copy-Item ".check-rust\target\release\ecoclock.exe" "dist-release\ecoclock-$tag-windows-x64.exe"
           Remove-Item -Recurse -Force ".check-rust\target"
           Compress-Archive -Path ".check-rust\*" -DestinationPath "dist-release\ecoclock-crate-$tag.zip"
-          Get-FileHash "dist-release\*.exe" -Algorithm SHA256 |
-            ForEach-Object { "$($_.Hash.ToLower())  $(Split-Path $_.Path -Leaf)" } |
-            Set-Content "dist-release\SHA256SUMS.txt"
+          # LF explicite : un SHA256SUMS.txt en CRLF casse `sha256sum -c`.
+          $lignes = Get-FileHash "dist-release\*.exe" -Algorithm SHA256 |
+            ForEach-Object { "$($_.Hash.ToLower())  $(Split-Path $_.Path -Leaf)" }
+          [System.IO.File]::WriteAllText(
+            (Join-Path (Get-Location) "dist-release\SHA256SUMS.txt"),
+            (($lignes -join "`n") + "`n")
+          )
           Get-ChildItem dist-release | Select-Object Name, Length
 
       - name: Publier
