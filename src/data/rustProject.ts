@@ -21,13 +21,17 @@ eframe = { version = "0.29", default-features = false, features = ["glow", "defa
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.8"
 
+# Contrôle & télémétrie GPU NVIDIA via nvml.dll (feature optionnelle + fallback dynamique)
+nvml-wrapper = { version = "0.10", optional = true }
+
 [features]
 default = ["nvml"]
 # Désactivable (--no-default-features) pour les machines AMD / Intel iGPU seul
 nvml = ["dep:nvml-wrapper"]
 
-# Contrôle & télémétrie GPU NVIDIA via nvml.dll (feature optionnelle + fallback dynamique)
-nvml-wrapper = { version = "0.10", optional = true }
+[build-dependencies]
+# Compile le manifeste applicatif (DPI, asInvoker, thème) dans les ressources PE
+embed-resource = "2"
 
 # Bindings Win32 officiels Microsoft — uniquement les sous-modules strictement nécessaires
 [target.'cfg(windows)'.dependencies.windows]
@@ -102,25 +106,22 @@ overflow-checks = true  # Conserve la sûreté arithmétique même en release !
     path: "build.rs",
     layer: "Configuration",
     summary: "Intègre le manifeste UAC `asInvoker` directement dans les ressources PE de l'exécutable Windows.",
-    content: `use std::{env, fs, path::PathBuf};
+    content: `use std::{env, fs, io::Write, path::PathBuf};
 
 fn main() {
     println!("cargo:rerun-if-changed=app.manifest");
-    if env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows") {
-        let out = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR manquant"));
-        let rc_path = out.join("ecoclock.rc");
-        let manifest = env::current_dir()
-            .expect("cwd")
-            .join("app.manifest")
-            .display()
-            .to_string()
-            .replace('\\', "\\\\");
-        // RT_MANIFEST (24), CREATEPROCESS_MANIFEST_RESOURCE_ID (1)
-        fs::write(&rc_path, format!("1 24 \"{manifest}\"\\n")).expect("écriture rc");
-        embed_resource::compile(&rc_path, embed_resource::NONE);
+    if env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("windows") {
+        return;
     }
-}
-`,
+    let out = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR manquant"));
+    let rc_path = out.join("ecoclock.rc");
+    let manifest = env::current_dir().expect("cwd").join("app.manifest");
+    // RC accepte les separateurs POSIX : pas d'antislash litteral, donc pas d'echappement fragile.
+    let manifest_posix = manifest.display().to_string().replace(char::from(92), "/");
+    let mut rc_file = fs::File::create(&rc_path).expect("creation du fichier rc");
+    writeln!(rc_file, r#"1 24 "{}""#, manifest_posix).expect("ecriture du fichier rc");
+    embed_resource::compile(&rc_path, embed_resource::NONE);
+}`,
   },
   {
     path: "src/main.rs",
@@ -984,9 +985,9 @@ pub fn request_uac_elevation(active_slot: usize) -> io::Result<bool> {
 
 use crate::domain::{AutostartConfig, AutostartMethod, PrivilegeLevel};
 
-const REG_RUN_SUBKEY: &str = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
+const REG_RUN_SUBKEY: &str = r"Software\\Microsoft\\Windows\\CurrentVersion\\Run";
 const APP_VALUE_NAME: &str = "EcoClockRs";
-const TASK_NAME: &str = "EcoClock\\Autostart";
+const TASK_NAME: &str = r"EcoClock\\Autostart";
 
 pub fn sync_autostart(cfg: &AutostartConfig, priv_level: PrivilegeLevel) -> io::Result<()> {
     // Nettoie toujours les deux emplacements pour éviter tout doublon au démarrage
@@ -1002,7 +1003,7 @@ pub fn sync_autostart(cfg: &AutostartConfig, priv_level: PrivilegeLevel) -> io::
     let exe = env::current_exe()?;
     let slot = cfg.boot_profile_slot.clamp(1, 5);
     let tray_flag = if cfg.start_minimized { " --tray" } else { " --boot" };
-    let cmd_line = format!("\"{}\" --apply-profile {}{}", exe.display(), slot, tray_flag);
+    let cmd_line = format!(r#""{}" --apply-profile {}{}"#, exe.display(), slot, tray_flag);
 
     match (cfg.method, priv_level) {
         (AutostartMethod::TaskSchedulerAdmin, PrivilegeLevel::ElevatedAdmin) => {
@@ -1403,7 +1404,7 @@ pub fn read_approx_cpu_mhz() -> Option<u32> {
 #[cfg(feature = "nvml")]
 use nvml_wrapper::{
     enum_wrappers::device::{Clock, TemperatureSensor},
-    struct_wrappers::device::GpuLockedClocksSetting,
+    enums::device::GpuLockedClocksSetting,
     Nvml,
 };
 
@@ -1960,7 +1961,7 @@ impl eframe::App for EcoClockApp {
                 } else if hover_tip(
                     ui.button("Mode User — Élever en Admin (UAC)"),
                     tips,
-                    "Sauvegarde le profil actif puis relance via ShellExecuteExW(\"runas\") pour débloquer NVML GPU, NVMe APST, Core Parking et tâche planifiée.",
+                    r#"Sauvegarde le profil actif puis relance via ShellExecuteExW("runas") pour débloquer NVML GPU, NVMe APST, Core Parking et tâche planifiée."#,
                 )
                 .clicked()
                 {

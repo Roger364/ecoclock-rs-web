@@ -4,6 +4,9 @@ node_modules/
 # Build de production (regénérable par `npm run build`)
 dist/
 
+# Extraction temporaire du crate Rust (npm run check:rust --keep)
+.check-rust/
+
 # Divers
 *.log
 .DS_Store

@@ -3,14 +3,14 @@
 Base : `rust-hardware-underclocking-utility4.zip` (17/11/2026, 54 fichiers, 16 121 lignes `src/`).
 Organisation en **vagues** : une vague = un ensemble de correctifs sans interaction entre eux, validable en une seule passe de vérification.
 
-**État vérifié à l'instant :** `tsc --noEmit` 0 erreur · `vitest run` **42/42** · `vite build` OK (809,32 kB / 239,46 kB gzip).
+**État vérifié à l'instant :** `tsc --noEmit` 0 erreur · `vitest run` **42/42** · `vite build` OK (~810 kB / 239,6 kB gzip) · `cargo check` OK sur le crate livré.
 Référence d'origine (v4 non modifiée) : 39 tests, 808,45 kB / 239,10 kB.
 
 | Vague | Contenu | Statut | Tests |
 |---|---|---|---|
 | **1** | Contrat TOML documenté, pertes annoncées, audit cohérent, docstrings | ✅ **livrée** | 41 |
 | **2** | `hasEthernet` : suppression de la proposition EEE fantôme | ✅ **livrée** | 42 |
-| **3** | Verrou de schéma étendu, fidélité Rust | 💤 optionnelle | — |
+| **3** | Le crate Rust livré compile réellement + garde `npm run check:rust` | ✅ **livrée** | 42 |
 
 ---
 
@@ -221,9 +221,46 @@ npm run build       # 809,32 kB / 239,46 kB gzip
 
 ---
 
-# Vague 3 — optionnelle
+# Vague 3 — livrée : le crate Rust compile
 
-Rien n'est requis ici. Deux chantiers sont documentés pour mémoire :
+## Le défaut
+
+L'onglet « Source Rust » présente 21 fichiers comme un projet complet et téléchargeable. Ce crate n'existait nulle part sur le disque : il est assemblé à partir de littéraux TypeScript, donc `tsc` ne voit jamais son contenu et aucun test ne le compilait. `cargo check` révélait **sept défauts**, dont quatre bloquants dès la première étape.
+
+| # | Fichier | Défaut | Effet |
+|---|---|---|---|
+| 1 | `Cargo.toml` | `nvml-wrapper` placé **après** `[features]` | manifeste inanalysable par Cargo |
+| 2 | `Cargo.toml` | `embed_resource` utilisé sans `[build-dependencies]` | build script impossible à lier |
+| 3 | `build.rs` | `'\'` : littéral de caractère non terminé | build script ne compile pas |
+| 4 | `build.rs` | `"1 24 "{manifest}""` : guillemets non échappés | idem |
+| 5 | `platform/autostart.rs` | clé de registre et nom de tâche en antislashs simples | 5 erreurs d'échappement |
+| 6 | `platform/autostart.rs` | `format!(""{}" --apply-profile…")` | ligne de commande cassée |
+| 7 | `platform/gpu_nvml.rs` | `struct_wrappers::device::GpuLockedClocksSetting` | type inexistant en 0.10 (c'est `enums::device`) |
+
+Les défauts 3, 4 et 6 ont la même cause : les `\"` et `\\` du Rust ont été consommés par les gabarits TypeScript qui les hébergent. La correction évite désormais **tout antislash littéral** (chaînes brutes Rust `r"…"` / `r#"…"#`, séparateurs POSIX pour `rc.exe`), ce qui supprime la classe de bug plutôt que l'occurrence.
+
+## La garde
+
+`npm run check:rust` (`scripts/check-rust.mjs`) bundle les deux modules de données avec esbuild, écrit les 21 fichiers dans `.check-rust/`, lance `cargo check` et propage le code de sortie. Le dossier est supprimé en cas de succès, conservé avec `--keep` pour inspection.
+
+```bash
+npm run check:rust     # 21 fichiers Rust extraits → cargo check : OK
+```
+
+Cette commande est le seul moyen de vérifier un livrable qui n'existe pas sur le disque. Elle doit être lancée à chaque modification de `rustProject.ts` ou `rustExtras.ts`.
+
+## État vérifié
+
+```
+npm run check:rust   → 21 fichiers, cargo check OK (3 warnings de code mort)
+tsc --noEmit         → 0 erreur
+vitest run           → 42/42
+vite build           → ~810 kB / 239,6 kB gzip
+```
+
+# Vague 4 — reste à faire
+
+Rien n'est bloquant. Deux chantiers documentés pour mémoire :
 
 1. **Étendre le verrou de schéma** aux blocs `[autostart]` et aux clés racine (`active_slot`, `show_tooltips`, `adaptive_enabled`). Même technique que 1.4, ~15 lignes. Utile si le schéma Rust bouge encore.
 2. **Supprimer la cause des pertes** plutôt que les signaler : côté Rust, remplacer les deux `bool` par des énumérations à 3 variantes (`GpuVramPolicy`, `TimerResolutionPolicy`) avec migration de `profiles.toml`. C'est le vrai correctif de fond ; il rend `getTomlPersistenceWarnings` inutile et doit donc être fait **avant** d'investir davantage côté web.
@@ -277,9 +314,10 @@ Neuf propriétés, chacune tenue par un test nommé. Si l'une rougit, c'est la m
 
 - [x] `npx tsc --noEmit` : 0 erreur
 - [x] `npx vitest run` : 42/42
-- [x] `npm run build` : succès, 809,32 kB (239,46 kB gzip)
+- [x] `npm run build` : succès, ~810 kB (239,6 kB gzip)
 - [x] Aucune occurrence de « 39 tests » dans `src/`
 - [x] Vague 2 : `npx vitest run` → 42/42
 - [ ] Export `profiles.toml` puis réimport : les 5 profils et l'autostart reviennent à l'identique
 - [ ] Export depuis l'UI : le toast orange liste `P3 : VRAM prefer_p5` et `P5 : timer 0,5 ms`
+- [x] `npm run check:rust` : 21 fichiers extraits, `cargo check` OK
 - [ ] `npm run dev` : l'app démarre, les 6 onglets s'ouvrent, la matrice adaptative affiche 7 lignes
