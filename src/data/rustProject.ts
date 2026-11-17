@@ -1651,6 +1651,74 @@ pub fn read_approx_cpu_mhz() -> Option<u32> {
     }
     None
 }
+
+/// Constructeur du CPU, lu depuis la variable PROCESSOR_IDENTIFIER : aucun CPUID,
+/// aucune dépendance, et la variable est fournie par Windows sur tous les postes.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum CpuVendor {
+    Amd,
+    Intel,
+    Unknown,
+}
+
+pub fn vendor_from_identifier(identifier: &str) -> CpuVendor {
+    if identifier.contains("AuthenticAMD") {
+        CpuVendor::Amd
+    } else if identifier.contains("GenuineIntel") {
+        CpuVendor::Intel
+    } else {
+        CpuVendor::Unknown
+    }
+}
+
+pub fn cpu_vendor() -> CpuVendor {
+    use std::sync::OnceLock;
+    static VENDOR: OnceLock<CpuVendor> = OnceLock::new();
+    *VENDOR.get_or_init(|| {
+        std::env::var("PROCESSOR_IDENTIFIER")
+            .map(|id| vendor_from_identifier(&id))
+            .unwrap_or(CpuVendor::Unknown)
+    })
+}
+
+impl CpuVendor {
+    /// Le plafond MHz n'est pas un verrou dur sur AMD : mesuré à +21,8 % de temps
+    /// d'exécution pour 2 000 MHz, au lieu des ~+85 % attendus. On le dit.
+    pub fn freq_cap_note(self) -> Option<&'static str> {
+        match self {
+            CpuVendor::Amd => Some(
+                "AMD : le plafond MHz est indicatif. Mesuré +21,8 % à 2 000 MHz (au lieu de ~+85 % pour un verrou dur) : le firmware l'honore partiellement.",
+            ),
+            CpuVendor::Intel | CpuVendor::Unknown => None,
+        }
+    }
+}
+
+#[cfg(test)]
+mod vendor_tests {
+    use super::{vendor_from_identifier, CpuVendor};
+
+    #[test]
+    fn lit_le_constructeur_dans_processor_identifier() {
+        // Chaînes telles que Windows les expose.
+        assert_eq!(
+            vendor_from_identifier("AMD64 Family 25 Model 33 Stepping 0, AuthenticAMD"),
+            CpuVendor::Amd
+        );
+        assert_eq!(
+            vendor_from_identifier("Intel64 Family 6 Model 183 Stepping 1, GenuineIntel"),
+            CpuVendor::Intel
+        );
+        assert_eq!(vendor_from_identifier("ARM64 Family 0, unknown"), CpuVendor::Unknown);
+    }
+
+    #[test]
+    fn seul_amd_avertit_sur_le_plafond_indicatif() {
+        assert!(CpuVendor::Amd.freq_cap_note().is_some());
+        assert!(CpuVendor::Intel.freq_cap_note().is_none());
+        assert!(CpuVendor::Unknown.freq_cap_note().is_none());
+    }
+}
 `,
   },
   {
@@ -2139,7 +2207,7 @@ use crate::{
     optimizer,
     platform::{
         adaptive::{self, AdaptiveGovernor, CpuLoadSampler, HostContext},
-        autostart, privilege, PlatformController,
+        autostart, power_plan, privilege, PlatformController,
     },
     safety::RollbackGuard,
     telemetry,
@@ -2300,6 +2368,9 @@ impl eframe::App for EcoClockApp {
                 cols[0].heading("Sous-systèmes underclockables");
                 let r_cpu = cols[0].add(egui::Slider::new(&mut self.working.cpu_freq_cap_mhz, 800..=5200).text("CPU Max MHz"));
                 tooltips::attach(r_cpu, &tooltips::CPU_FREQ, tips);
+                if let Some(note) = power_plan::cpu_vendor().freq_cap_note() {
+                    cols[0].small(egui::RichText::new(note).color(egui::Color32::from_rgb(251, 191, 36)));
+                }
                 let r_epp = cols[0].add(egui::Slider::new(&mut self.working.cpu_epp_percent, 0..=100).text("CPU EPP %"));
                 hover_tip(r_epp, tips, "GUID PERFEPP (User). Arbitrage microcode Speed Shift / CPPC2 toutes les 1 ms.");
                 let r_cs = cols[0].checkbox(&mut self.working.cpu_deep_cstates, "C-States profonds C6/C8/C10");

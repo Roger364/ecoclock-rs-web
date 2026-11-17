@@ -66,8 +66,8 @@ npm run check:rust   # extrait le crate puis cargo check --all-targets
 
 | Commande | Résultat |
 |---|---|
-| `npx vitest run` | 43/43 |
-| `npm run check:rust -- --keep`, puis `cargo test` dans `.check-rust/` | 10/10 |
+| `npx vitest run` | 47/47 |
+| `npm run check:rust -- --keep`, puis `cargo test` dans `.check-rust/` | 12/12 |
 | `npx tsc --noEmit` | 0 erreur |
 
 ## Sécurité
@@ -79,7 +79,7 @@ npm run check:rust   # extrait le crate puis cargo check --all-targets
 ## Limites connues
 
 - Windows uniquement.
-- `PROCFREQMAX` est un plafond **partiel** sur AMD : mesuré +21,8 % de temps mono-thread à 2 000 MHz, contre ~+85 % pour un verrou dur.
+- `PROCFREQMAX` est un plafond **partiel** sur AMD : mesuré +21,8 % de temps mono-thread à 2 000 MHz, contre ~+85 % pour un verrou dur. La GUI détecte le constructeur (`PROCESSOR_IDENTIFIER`) et affiche cet écart sous le curseur ; aucun réglage AMD supplémentaire n'est proposé faute de mesure.
 - La température CPU n'est pas toujours exposée (`MSAcpi_ThermalZoneTemperature` absent sur certains postes).
 
 ## Structure

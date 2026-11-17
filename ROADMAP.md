@@ -1,7 +1,8 @@
 # Feuille de route
 
-État au 18/11/2026 : configurateur React + crate Rust embarqué, 43 tests TypeScript, 10 tests Rust,
-GUI réparée, dépôt public. Phases 1 à 3 faites, phase 4 presque close (sonde thermique bloquée). Le détail technique, les décisions et les pièges sont dans
+État au 17/11/2026 : configurateur React + crate Rust embarqué, 47 tests TypeScript, 12 tests Rust,
+GUI réparée, dépôt public. Phases 1 à 4 faites (sonde thermique bloquée) ; phase 5 entamée par la
+détection du constructeur CPU. Le détail technique, les décisions et les pièges sont dans
 [PLAN-ACTIONS.md](PLAN-ACTIONS.md) ; ce document ne dit que **quoi faire ensuite, dans quel ordre**.
 
 L'ordre n'est pas arbitraire : un dépôt public doit d'abord être utilisable et honnête, ensuite
@@ -43,7 +44,7 @@ Le `.ps1` n'est pas un asset de release : il est généré par l'application pou
 
 | # | Action | Pourquoi |
 |---|---|---|
-| 11 | Détecter le vendor CPU (Intel/AMD) et adapter les réglages | `PROCFREQMAX` est Intel-first ; côté AMD c'est CPPC2 qui compte |
+| 11 | Détecter le vendor CPU (Intel/AMD) ✅ détection + avertissement ; adaptation à discuter | `PROCFREQMAX` est Intel-first ; côté AMD c'est CPPC2 qui compte. La GUI lit `PROCESSOR_IDENTIFIER` et affiche l'écart mesuré sur AMD, sans ajouter de réglage non mesuré |
 | 12 | Interface FR/EN | le dépôt est public, l'interface est francophone |
 
 ## Ce que je ne ferais pas

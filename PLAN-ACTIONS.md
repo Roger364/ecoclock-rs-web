@@ -30,6 +30,7 @@ binaire release         GUI + headless validés (sandbox 4/4, fenêtre réelle s
 | 6 | Recette UI + mesure réelle du plafond | navigateur + hôte | `2ddf7fc` |
 | 7 | Détection de capacités par code retour d'écriture | sandbox 13/1 | `d04ea13` |
 | 8 | Binaire release testé ; GUI réparée (débordement au démarrage) | sandbox 4/4 + fenêtre hôte | — |
+| 9 | Constructeur CPU détecté ; plafond MHz annoncé comme indicatif sur AMD | `cargo test` 12/12 (`vendor_tests`) | ce commit |
 
 La vague 1 annonçait une perte inévitable (VRAM `prefer_p5`, timer 0,5 ms). La vague 4 l'a supprimée à la source : ces deux états sont désormais des champs Rust de première classe, l'export n'a plus d'extension web et l'avertissement a disparu avec sa cause.
 
@@ -39,7 +40,7 @@ La vague 1 annonçait une perte inévitable (VRAM `prefer_p5`, timer 0,5 ms). La
 
 Par ordre de valeur. Chaque ligne dit **pourquoi** et **comment vérifier**.
 
-1. **Verrouiller le contrat du `.ps1` par un test exécutable.** Aujourd'hui seules des assertions de chaîne couvrent le générateur. Un test pourrait exécuter le script dans le sandbox et exiger `[OK] … X réglage(s), Y ignoré(s)` — c'est le seul moyen d'attraper une régression comme celle de la vague 5.
+1. **Adapter à CPPC2 côté AMD.** La détection du constructeur et l'avertissement sous le curseur sont faits ; proposer des réglages propres à AMD demanderait une campagne de mesure sur un poste AMD, sinon c'est du décor.
 
 2. **Sonde thermique dédiée (optionnel).** Sans elle, aucune campagne chaleur/bruit n'est possible : `MSAcpi_ThermalZoneTemperature` est absent sur ce poste.
 
@@ -84,6 +85,8 @@ Dix propriétés, chacune tenue par un test nommé. Si l'une rougit, c'est la mo
 | Afficher « ≤ 3,3 GHz » au lieu de « 3,3 GHz » | le plafond n'est pas une fréquence d'exécution : le firmware l'honore partiellement |
 | Exporter le `.ps1` avec un BOM UTF-8 | sans BOM, PowerShell 5.1 lit le fichier en ANSI et casse les accents |
 | Checksum des benchmarks en `wrapping_add` | les valeurs sommées sont des hashes, pas des durées ; le débordement tuait la GUI |
+| Détecter le constructeur via `PROCESSOR_IDENTIFIER` plutôt que CPUID | pas d'unsafe, pas de dépendance, et le nom ne sert qu'à avertir — jamais à choisir un réglage |
+| Ne proposer aucun réglage CPPC2 non mesuré | la règle du projet : aucun levier sans preuve de débit, de température ou de bruit |
 
 ---
 
@@ -169,6 +172,7 @@ Détection retenue : le **code retour de l'écriture**. Rust le consigne dans `A
 6. **Somme de checksums en `u64`** : additionner des hashes (états LCG) déborde ; avec `overflow-checks = true` et `panic = abort`, cela tue la GUI avant la première frame.
 7. **`.ps1` sans BOM** : PowerShell 5.1 lit un fichier sans BOM comme de l'ANSI, donc « sauvegardée » sort en « sauvegardÃ©e ». Le BOM est obligatoire.
 8. **Clés `PowerSchemes` protégées** : même élevé, un administrateur ne peut pas supprimer une valeur écrite via l'API ; il faut passer par l'API elle-même.
+9. **Backtick dans une doc Rust** : le contenu des fichiers Rust vit dans un template literal TypeScript ; un backtick non échappé dans un commentaire ferme la chaîne et casse l'assemblage (`Expected "}"`). Même classe que les `\"` de la vague 3.
 
 ---
 
