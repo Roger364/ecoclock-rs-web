@@ -79,4 +79,4 @@ PLAN-ACTIONS.md              état du projet, décisions et pièges connus
 
 ## Licence
 
-[MIT](LICENSE) — Copyright (c) 2026 Roger364.
+[MIT](LICENSE) — Copyright (c) 2026 Bisse Studio.
