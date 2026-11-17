@@ -339,6 +339,41 @@ pub enum WifiPower {
     MaxPsp,
 }
 
+/// Politique d'état mémoire du GPU dédié. Trois états réels, pas deux : PreferP5 bride la
+/// mémoire sans imposer la descente au repos, ForceP8Idle l'impose. Un booléen perdait
+/// PreferP5 à chaque enregistrement.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum GpuVramPolicy {
+    #[default]
+    #[serde(rename = "auto")]
+    Auto,
+    #[serde(rename = "prefer_p5")]
+    PreferP5,
+    #[serde(rename = "force_p8_idle")]
+    ForceP8Idle,
+}
+
+/// Résolution du timer système : 1 ms standard, 0,5 ms haute résolution (latence minimale)
+/// et coalescence 15,6 ms (rendement maximal). Un booléen n'en codait que deux.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum TimerResolutionPolicy {
+    #[default]
+    #[serde(rename = "standard_1ms")]
+    Standard1Ms,
+    #[serde(rename = "high_0_5ms")]
+    High0_5Ms,
+    #[serde(rename = "coalesced_15_6ms")]
+    Coalesced15_6Ms,
+}
+
+impl TimerResolutionPolicy {
+    /// Seule la coalescence demande à Windows d'ignorer la résolution fine du timer
+    /// (PROCESS_POWER_THROTTLING_IGNORE_TIMER_RESOLUTION).
+    pub const fn ignores_timer_resolution(self) -> bool {
+        matches!(self, Self::Coalesced15_6Ms)
+    }
+}
+
 /// Configuration complète de tous les sous-systèmes underclockables sous Windows
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HardwareConfig {
@@ -356,7 +391,7 @@ pub struct HardwareConfig {
     // GPU Dédié & iGPU
     pub gpu_power_limit_pct: u32,   // 40..=100 (Admin NVML)
     pub gpu_clock_cap_mhz: u32,     // 900..=3000 (Admin NVML)
-    pub gpu_force_p8_idle: bool,    // (Admin)
+    pub gpu_vram_policy: GpuVramPolicy, // (Admin)
     pub gpu_zero_rpm: bool,         // (User)
     pub igpu_eco_mode: bool,        // (User)
 
@@ -372,7 +407,7 @@ pub struct HardwareConfig {
     pub nic_eee_802_3az: bool,      // (Admin)
     pub wifi_power: WifiPower,      // (User)
     pub usb_selective_suspend: bool,// (User)
-    pub timer_coalescing: bool,     // (User)
+    pub timer_resolution: TimerResolutionPolicy, // (User)
 }
 
 impl HardwareConfig {
@@ -393,7 +428,7 @@ impl HardwareConfig {
             bg_eco_qos: self.bg_eco_qos,
             gpu_power_limit_pct: self.gpu_power_limit_pct.clamp(40, 100),
             gpu_clock_cap_mhz: self.gpu_clock_cap_mhz.clamp(900, 3000),
-            gpu_force_p8_idle: self.gpu_force_p8_idle,
+            gpu_vram_policy: self.gpu_vram_policy,
             gpu_zero_rpm: self.gpu_zero_rpm,
             igpu_eco_mode: self.igpu_eco_mode,
             pcie_aspm: self.pcie_aspm,
@@ -405,7 +440,7 @@ impl HardwareConfig {
             nic_eee_802_3az: self.nic_eee_802_3az,
             wifi_power: self.wifi_power,
             usb_selective_suspend: self.usb_selective_suspend,
-            timer_coalescing: self.timer_coalescing,
+            timer_resolution: self.timer_resolution,
         }
     }
 
@@ -422,7 +457,7 @@ impl HardwareConfig {
             bg_eco_qos: false,
             gpu_power_limit_pct: 100,
             gpu_clock_cap_mhz: 2610,
-            gpu_force_p8_idle: false,
+            gpu_vram_policy: GpuVramPolicy::Auto,
             gpu_zero_rpm: false,
             igpu_eco_mode: false,
             pcie_aspm: PcieAspm::Off,
@@ -434,7 +469,7 @@ impl HardwareConfig {
             nic_eee_802_3az: false,
             wifi_power: WifiPower::CamMaxPerf,
             usb_selective_suspend: false,
-            timer_coalescing: false,
+            timer_resolution: TimerResolutionPolicy::Standard1Ms,
         }
     }
 }
@@ -495,11 +530,11 @@ impl ProfileStore {
             cpu_max_percent: 92, cpu_min_percent: 5, cpu_freq_cap_mhz: 3300,
             cpu_turbo: TurboMode::Disabled, cpu_epp_percent: 72, cpu_min_active_cores: 35,
             cpu_deep_cstates: true, cpu_pl1_watts: 45, bg_eco_qos: true,
-            gpu_power_limit_pct: 60, gpu_clock_cap_mhz: 1680, gpu_force_p8_idle: true,
+            gpu_power_limit_pct: 60, gpu_clock_cap_mhz: 1680, gpu_vram_policy: GpuVramPolicy::ForceP8Idle,
             gpu_zero_rpm: true, igpu_eco_mode: true, pcie_aspm: PcieAspm::L1Substates,
             nvme_apst: NvmeApst::Ps3Balanced, nvme_idle_timeout_ms: 150, sata_alpm: SataAlpm::DipmSlumber,
             display_refresh_hz: 60, display_brightness_pct: 45, nic_eee_802_3az: true,
-            wifi_power: WifiPower::MediumPsp, usb_selective_suspend: true, timer_coalescing: true,
+            wifi_power: WifiPower::MediumPsp, usb_selective_suspend: true, timer_resolution: TimerResolutionPolicy::Coalesced15_6Ms,
         };
         let silent = HardwareConfig {
             cpu_max_percent: 68, cpu_freq_cap_mhz: 2100, cpu_epp_percent: 88, cpu_pl1_watts: 28,
@@ -510,10 +545,10 @@ impl ProfileStore {
         let gaming = HardwareConfig {
             cpu_max_percent: 100, cpu_freq_cap_mhz: 4200, cpu_turbo: TurboMode::Efficient,
             cpu_epp_percent: 40, cpu_min_active_cores: 60, cpu_pl1_watts: 65,
-            gpu_power_limit_pct: 72, gpu_clock_cap_mhz: 2070, gpu_force_p8_idle: false,
+            gpu_power_limit_pct: 72, gpu_clock_cap_mhz: 2070, gpu_vram_policy: GpuVramPolicy::Auto,
             pcie_aspm: PcieAspm::MaxPowerSavingsL1, nvme_apst: NvmeApst::Ps1Light,
             display_refresh_hz: 120, display_brightness_pct: 60, wifi_power: WifiPower::CamMaxPerf,
-            timer_coalescing: false,
+            timer_resolution: TimerResolutionPolicy::Standard1Ms,
             ..eco.clone()
         };
         let server = HardwareConfig {
@@ -600,6 +635,28 @@ mod tests {
         assert!(!decoded.adaptive_enabled);
         assert_eq!(decoded.profiles[0].config, store.profiles[0].config);
     }
+
+    #[test]
+    fn les_enums_a_trois_etats_survivent_au_toml() {
+        let mut store = ProfileStore::default_five_profiles();
+        store.profiles[2].config.gpu_vram_policy = GpuVramPolicy::PreferP5;
+        store.profiles[2].config.timer_resolution = TimerResolutionPolicy::High0_5Ms;
+
+        let encoded = toml::to_string_pretty(&store).expect("encodage TOML");
+        // Forme exacte partagée avec l'export web (src/data/profiles.ts).
+        assert!(encoded.contains(r#"gpu_vram_policy = "prefer_p5""#));
+        assert!(encoded.contains(r#"timer_resolution = "high_0_5ms""#));
+
+        let decoded: ProfileStore = toml::from_str(&encoded).expect("décodage TOML");
+        assert_eq!(decoded.profiles[2].config, store.profiles[2].config);
+    }
+
+    #[test]
+    fn seule_la_coalescence_ignore_la_resolution_du_timer() {
+        assert!(!TimerResolutionPolicy::Standard1Ms.ignores_timer_resolution());
+        assert!(!TimerResolutionPolicy::High0_5Ms.ignores_timer_resolution());
+        assert!(TimerResolutionPolicy::Coalesced15_6Ms.ignores_timer_resolution());
+    }
 }
 `,
   },
@@ -608,6 +665,8 @@ mod tests {
     layer: "Entrée & Sécurité",
     summary: "Persistance atomique (`write .tmp` + `sync_all` + `rename`) des 5 profils dans `%APPDATA%\\EcoClock\\` et sentinelle Safe-Boot.",
     content: `#![forbid(unsafe_code)]
+
+use serde::Deserialize;
 
 use std::{
     env,
@@ -649,10 +708,49 @@ impl ConfigRepository {
         fs::rename(&tmp, target)
     }
 
+    /// profiles.toml antérieur à la vague 4 : deux bool y codaient 3 états possibles
+    /// (prefer_p5 et 0,5 ms étaient aplatis dès le premier enregistrement Rust).
+    /// La clé devenue canonique gagne si elle est déjà présente (les exports web écrivaient
+    /// les deux), puis l'ancienne clé est toujours retirée : serde refuse un champ en double.
+    fn migrate_legacy_config_keys(config: &mut toml::Table) {
+        if let Some(legacy) = config.remove("gpu_force_p8_idle") {
+            if !config.contains_key("gpu_vram_policy") {
+                let policy = if legacy.as_bool() == Some(true) { "force_p8_idle" } else { "auto" };
+                config.insert("gpu_vram_policy".to_owned(), toml::Value::String(policy.to_owned()));
+            }
+        }
+        if let Some(legacy) = config.remove("timer_coalescing") {
+            if !config.contains_key("timer_resolution") {
+                let policy = if legacy.as_bool() == Some(true) { "coalesced_15_6ms" } else { "standard_1ms" };
+                config.insert("timer_resolution".to_owned(), toml::Value::String(policy.to_owned()));
+            }
+        }
+    }
+
+    fn decode_profiles(raw: &str) -> Result<ProfileStore, toml::de::Error> {
+        let mut value: toml::Value = toml::from_str(raw)?;
+        if let Some(profiles) = value.get_mut("profiles").and_then(toml::Value::as_array_mut) {
+            for profile in profiles {
+                if let Some(config) = profile.get_mut("config").and_then(toml::Value::as_table_mut) {
+                    Self::migrate_legacy_config_keys(config);
+                }
+            }
+        }
+        ProfileStore::deserialize(value)
+    }
+
+    fn decode_baseline(raw: &str) -> Result<HardwareConfig, toml::de::Error> {
+        let mut value: toml::Value = toml::from_str(raw)?;
+        if let Some(table) = value.as_table_mut() {
+            Self::migrate_legacy_config_keys(table);
+        }
+        HardwareConfig::deserialize(value)
+    }
+
     pub fn load_or_create_default(&self) -> io::Result<ProfileStore> {
         let path = self.profiles_path();
         if let Ok(raw) = fs::read_to_string(&path) {
-            if let Ok(mut store) = toml::from_str::<ProfileStore>(&raw) {
+            if let Ok(mut store) = Self::decode_profiles(&raw) {
                 store.active_slot = store.active_slot.clamp(1, crate::domain::PROFILE_COUNT);
                 store.autostart.boot_profile_slot =
                     store.autostart.boot_profile_slot.clamp(1, crate::domain::PROFILE_COUNT);
@@ -682,7 +780,7 @@ impl ConfigRepository {
     ) -> io::Result<HardwareConfig> {
         let path = self.baseline_path();
         if let Ok(raw) = fs::read_to_string(&path) {
-            if let Ok(cfg) = toml::from_str::<HardwareConfig>(&raw) {
+            if let Ok(cfg) = Self::decode_baseline(&raw) {
                 return Ok(cfg.clamped());
             }
         }
@@ -703,6 +801,46 @@ impl ConfigRepository {
 
     pub fn clear_dirty_boot_flag(&self) {
         let _ = fs::remove_file(self.dirty_flag_path());
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn migre_les_anciennes_cles_booleennes() {
+        let mut cfg: toml::Table = toml::from_str(
+            r#"gpu_force_p8_idle = true
+timer_coalescing = false
+"#,
+        )
+        .expect("TOML legacy");
+
+        ConfigRepository::migrate_legacy_config_keys(&mut cfg);
+
+        assert_eq!(cfg.get("gpu_vram_policy").and_then(toml::Value::as_str), Some("force_p8_idle"));
+        assert_eq!(cfg.get("timer_resolution").and_then(toml::Value::as_str), Some("standard_1ms"));
+        assert!(!cfg.contains_key("gpu_force_p8_idle"));
+        assert!(!cfg.contains_key("timer_coalescing"));
+    }
+
+    #[test]
+    fn la_cle_canonique_gagne_sur_le_booleen_herite() {
+        // Forme exacte des exports web de la vague 1 : les deux clés coexistent.
+        let mut cfg: toml::Table = toml::from_str(
+            r#"gpu_force_p8_idle = false
+gpu_vram_policy = "prefer_p5"
+timer_coalescing = true
+timer_resolution = "high_0_5ms"
+"#,
+        )
+        .expect("TOML mixte");
+
+        ConfigRepository::migrate_legacy_config_keys(&mut cfg);
+
+        assert_eq!(cfg.get("gpu_vram_policy").and_then(toml::Value::as_str), Some("prefer_p5"));
+        assert_eq!(cfg.get("timer_resolution").and_then(toml::Value::as_str), Some("high_0_5ms"));
     }
 }
 `,
@@ -853,7 +991,7 @@ impl PlatformController {
 
         // 1. Sous-systèmes accessibles dès le mode Utilisateur standard (asInvoker)
         power_plan::apply_user_settings(&cfg, &mut report);
-        power_plan::apply_process_eco_qos(cfg.bg_eco_qos, cfg.timer_coalescing, &mut report);
+        power_plan::apply_process_eco_qos(cfg.bg_eco_qos, cfg.timer_resolution.ignores_timer_resolution(), &mut report);
         display::apply_refresh_rate(cfg.display_refresh_hz, &mut report);
 
         // 2. Sous-systèmes nécessitant l'élévation Administrateur UAC
@@ -1654,7 +1792,7 @@ fn bench_timer_sleep_jitter() -> f64 {
     summary: "Conseiller Pareto pur (`#![forbid(unsafe_code)]`) générant les propositions de config optimisée et leur justification physique.",
     content: `#![forbid(unsafe_code)]
 
-use crate::domain::{HardwareConfig, NvmeApst, PcieAspm, TurboMode};
+use crate::domain::{GpuVramPolicy, HardwareConfig, NvmeApst, PcieAspm, TimerResolutionPolicy, TurboMode};
 
 pub struct Proposal {
     pub title: &'static str,
@@ -1709,7 +1847,7 @@ pub fn propose_optimizations(cfg: &HardwareConfig) -> Vec<Proposal> {
             apply: |c| {
                 c.gpu_power_limit_pct = 65;
                 c.gpu_clock_cap_mhz = 1750;
-                c.gpu_force_p8_idle = true;
+                c.gpu_vram_policy = GpuVramPolicy::ForceP8Idle;
                 c.gpu_zero_rpm = true;
             },
         });
@@ -1727,7 +1865,7 @@ pub fn propose_optimizations(cfg: &HardwareConfig) -> Vec<Proposal> {
                 c.cpu_deep_cstates = true;
                 c.usb_selective_suspend = true;
                 c.bg_eco_qos = true;
-                c.timer_coalescing = true;
+                c.timer_resolution = TimerResolutionPolicy::Coalesced15_6Ms;
             },
         });
     }

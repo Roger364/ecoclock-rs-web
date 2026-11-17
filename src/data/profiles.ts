@@ -294,6 +294,22 @@ const WIFI_FROM_RUST: Record<string, HardwareConfig["wifiPowerMode"]> = {
   max_psp: "max_psp",
 };
 
+const GPU_VRAM_POLICIES = ["auto", "prefer_p5", "force_p8_idle"] as const;
+const TIMER_RESOLUTIONS = ["standard_1ms", "high_0_5ms", "coalesced_15_6ms"] as const;
+
+/** Valide une valeur lue dans un TOML : une chaîne inconnue ne devient jamais un cast aveugle. */
+function asVramPolicy(value: unknown): HardwareConfig["gpuVramPolicy"] | undefined {
+  return typeof value === "string" && (GPU_VRAM_POLICIES as readonly string[]).includes(value)
+    ? (value as HardwareConfig["gpuVramPolicy"])
+    : undefined;
+}
+
+function asTimerResolution(value: unknown): HardwareConfig["timerResolution"] | undefined {
+  return typeof value === "string" && (TIMER_RESOLUTIONS as readonly string[]).includes(value)
+    ? (value as HardwareConfig["timerResolution"])
+    : undefined;
+}
+
 /**
  * Sérialise les 5 profils et l'autostart dans le schéma TOML EXACT attendu par
  * `toml::from_str::<ProfileStore>` dans `src/domain.rs` (`%APPDATA%\\EcoClock\\profiles.toml`).
@@ -312,8 +328,6 @@ export function serializeProfilesToToml(
   const lines: string[] = [
     "# %APPDATA%\\EcoClock\\profiles.toml — Compatible 1:1 avec EcoClock-rs (src/domain.rs::ProfileStore)",
     "# Écriture atomique (.tmp + sync_all + rename) | Toutes les valeurs sont re-bornées par clamped()",
-    "# Extensions web volontaires (ignorées par serde côté Rust) : gpu_vram_policy, timer_resolution",
-    "#   -> préservent prefer_p5 et high_0_5ms, non représentables par les booléens Rust",
     "",
     `active_slot = ${activeSlot}`,
     `show_tooltips = ${showTooltips}`,
@@ -349,7 +363,6 @@ export function serializeProfilesToToml(
       `bg_eco_qos = ${c.bgEcoQos}`,
       `gpu_power_limit_pct = ${c.gpuPowerLimitPct}`,
       `gpu_clock_cap_mhz = ${c.gpuCoreClockCapMhz}`,
-      `gpu_force_p8_idle = ${c.gpuVramPolicy === "force_p8_idle"}`,
       `gpu_vram_policy = "${c.gpuVramPolicy}"`,
       `gpu_zero_rpm = ${c.gpuZeroRpmFanStop}`,
       `igpu_eco_mode = ${c.igpuEcoClock}`,
@@ -362,32 +375,12 @@ export function serializeProfilesToToml(
       `nic_eee_802_3az = ${c.nicEeeEnabled}`,
       `wifi_power = "${WIFI_TO_RUST[c.wifiPowerMode]}"`,
       `usb_selective_suspend = ${c.usbSelectiveSuspend}`,
-      `timer_coalescing = ${c.timerResolution === "coalesced_15_6ms"}`,
       `timer_resolution = "${c.timerResolution}"`,
       ""
     );
   }
 
   return lines.join("\n");
-}
-
-/**
- * Champs du modèle web sans équivalent exact dans `HardwareConfig` (Rust) : `ecoclock.exe`
- * ne persiste que deux booléens (`gpu_force_p8_idle`, `timer_coalescing`). Un profil réglé
- * en `prefer_p5` ou `high_0_5ms` est donc aplati définitivement au premier enregistrement
- * côté Rust. Retourne les pertes à signaler avant export — tableau vide si le fichier est fidèle.
- */
-export function getTomlPersistenceWarnings(profiles: readonly Profile[]): string[] {
-  const warnings: string[] = [];
-  for (const profile of profiles) {
-    if (profile.config.timerResolution === "high_0_5ms") {
-      warnings.push(`P${profile.id} : timer 0,5 ms → reviendra à 1 ms`);
-    }
-    if (profile.config.gpuVramPolicy === "prefer_p5") {
-      warnings.push(`P${profile.id} : VRAM prefer_p5 → reviendra à auto`);
-    }
-  }
-  return warnings;
 }
 
 export interface ParsedTomlBundle {
@@ -401,6 +394,8 @@ export interface ParsedTomlBundle {
 /**
  * Parse un fichier `profiles.toml` (généré par l'app web ou par `ecoclock.exe`)
  * vers une structure brute destinée à être validée par `sanitizeProfiles` & `sanitizeAutostart`.
+ * Accepte aussi les fichiers antérieurs à la vague 4, où `gpu_vram_policy` / `timer_resolution`
+ * étaient absents ou doublés par les booléens `gpu_force_p8_idle` / `timer_coalescing`.
  */
 export function parseProfilesToml(raw: string): ParsedTomlBundle | null {
   if (typeof raw !== "string" || raw.length > 512_000) return null;
@@ -500,6 +495,11 @@ export function parseProfilesToml(raw: string): ParsedTomlBundle | null {
   const profiles: Partial<Profile>[] = rawProfiles.map((rp, idx) => {
     const def = DEFAULT_PROFILES[idx];
     const c = rp.cfg;
+    // Repli pour les fichiers antérieurs à la vague 4 : un booléen ne codait que 2 des 3 états.
+    const legacyVram =
+      c.gpu_force_p8_idle === true ? "force_p8_idle" : c.gpu_force_p8_idle === false ? "auto" : undefined;
+    const legacyTimer =
+      c.timer_coalescing === true ? "coalesced_15_6ms" : c.timer_coalescing === false ? "standard_1ms" : undefined;
     const mappedCfg: Partial<HardwareConfig> = {
       cpuMaxPercent: c.cpu_max_percent as number,
       cpuMinPercent: c.cpu_min_percent as number,
@@ -512,14 +512,7 @@ export function parseProfilesToml(raw: string): ParsedTomlBundle | null {
       bgEcoQos: c.bg_eco_qos as boolean,
       gpuPowerLimitPct: c.gpu_power_limit_pct as number,
       gpuCoreClockCapMhz: c.gpu_clock_cap_mhz as number,
-      gpuVramPolicy:
-        typeof c.gpu_vram_policy === "string"
-          ? (c.gpu_vram_policy as HardwareConfig["gpuVramPolicy"])
-          : c.gpu_force_p8_idle === true
-          ? "force_p8_idle"
-          : c.gpu_force_p8_idle === false
-          ? "auto"
-          : def.config.gpuVramPolicy,
+      gpuVramPolicy: asVramPolicy(c.gpu_vram_policy) ?? legacyVram ?? def.config.gpuVramPolicy,
       gpuZeroRpmFanStop: c.gpu_zero_rpm as boolean,
       igpuEcoClock: c.igpu_eco_mode as boolean,
       pcieAspm:
@@ -535,14 +528,7 @@ export function parseProfilesToml(raw: string): ParsedTomlBundle | null {
           ? WIFI_FROM_RUST[c.wifi_power] ?? def.config.wifiPowerMode
           : def.config.wifiPowerMode,
       usbSelectiveSuspend: c.usb_selective_suspend as boolean,
-      timerResolution:
-        typeof c.timer_resolution === "string"
-          ? (c.timer_resolution as HardwareConfig["timerResolution"])
-          : c.timer_coalescing === true
-          ? "coalesced_15_6ms"
-          : c.timer_coalescing === false
-          ? "standard_1ms"
-          : def.config.timerResolution,
+      timerResolution: asTimerResolution(c.timer_resolution) ?? legacyTimer ?? def.config.timerResolution,
     };
 
     return {

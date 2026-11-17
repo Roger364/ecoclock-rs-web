@@ -3,7 +3,7 @@
 Base : `rust-hardware-underclocking-utility4.zip` (17/11/2026, 54 fichiers, 16 121 lignes `src/`).
 Organisation en **vagues** : une vague = un ensemble de correctifs sans interaction entre eux, validable en une seule passe de vérification.
 
-**État vérifié à l'instant :** `tsc --noEmit` 0 erreur · `vitest run` **42/42** · `vite build` OK (~810 kB / 239,6 kB gzip) · `cargo check` OK sur le crate livré.
+**État vérifié à l'instant :** `tsc --noEmit` 0 erreur · `vitest run` **43/43** · `vite build` OK (~815 kB / 240,9 kB gzip) · `cargo check` OK sur le crate livré.
 Référence d'origine (v4 non modifiée) : 39 tests, 808,45 kB / 239,10 kB.
 
 | Vague | Contenu | Statut | Tests |
@@ -11,6 +11,7 @@ Référence d'origine (v4 non modifiée) : 39 tests, 808,45 kB / 239,10 kB.
 | **1** | Contrat TOML documenté, pertes annoncées, audit cohérent, docstrings | ✅ **livrée** | 41 |
 | **2** | `hasEthernet` : suppression de la proposition EEE fantôme | ✅ **livrée** | 42 |
 | **3** | Le crate Rust livré compile réellement + garde `npm run check:rust` | ✅ **livrée** | 42 |
+| **4** | Schéma TOML à 3 états : plus aucune perte web → Rust | ✅ **livrée** | 43 |
 
 ---
 
@@ -28,6 +29,8 @@ Référence d'origine (v4 non modifiée) : 39 tests, 808,45 kB / 239,10 kB.
 
 ## 1.1 — Les deux clés TOML hors schéma Rust sont désormais assumées
 
+> **Remplacé par la vague 4 (§4.1)** : le schéma Rust porte maintenant les 3 états, il n'y a plus de clé hors schéma.
+
 `src/data/profiles.ts`, en-tête de `serializeProfilesToToml` :
 
 ```ts
@@ -40,6 +43,8 @@ Référence d'origine (v4 non modifiée) : 39 tests, 808,45 kB / 239,10 kB.
 **Pourquoi ne pas les supprimer.** `GpuVramPolicy` et `TimerResolutionPolicy` ont 3 états chacun ; le `HardwareConfig` Rust n'a qu'un `bool` pour chacun (`gpu_force_p8_idle`, `timer_coalescing`). Ces deux clés sont donc ce qui rend l'export fidèle en web↔web. Les supprimer dégraderait le round-trip sans rien apporter côté Rust, qui les ignore de toute façon.
 
 ## 1.2 — La perte inévitable côté Rust est calculée et annoncée
+
+> **Remplacé par la vague 4 (§4.2–4.3)** : la perte a été supprimée à la source ; le helper et son test ont été retirés.
 
 Nouveau helper **pur** dans `src/data/profiles.ts` :
 
@@ -99,6 +104,8 @@ expect(getTomlPersistenceWarnings(DEFAULT_PROFILES)).toEqual([
 ```
 
 ## 1.4 — Verrou de schéma : 24 champs Rust + 2 extensions, et rien d'autre
+
+> **Mis à jour par la vague 4 (§4.4)** : le verrou exige désormais exactement 24 champs, sans extension.
 
 Test ajouté dans `engine.test.ts` : il découpe le TOML exporté par `[[profiles]]`, isole chaque bloc `[profiles.config]`, extrait les clés et exige l'égalité **exacte** avec les 24 champs du `HardwareConfig` Rust plus les 2 extensions.
 
@@ -258,18 +265,68 @@ vitest run           → 42/42
 vite build           → ~810 kB / 239,6 kB gzip
 ```
 
-# Vague 4 — reste à faire
+# Vague 4 — livrée
 
-Rien n'est bloquant. Deux chantiers documentés pour mémoire :
+Objectif : supprimer la **cause** des pertes TOML, pas seulement les signaler.
 
-1. **Étendre le verrou de schéma** aux blocs `[autostart]` et aux clés racine (`active_slot`, `show_tooltips`, `adaptive_enabled`). Même technique que 1.4, ~15 lignes. Utile si le schéma Rust bouge encore.
-2. **Supprimer la cause des pertes** plutôt que les signaler : côté Rust, remplacer les deux `bool` par des énumérations à 3 variantes (`GpuVramPolicy`, `TimerResolutionPolicy`) avec migration de `profiles.toml`. C'est le vrai correctif de fond ; il rend `getTomlPersistenceWarnings` inutile et doit donc être fait **avant** d'investir davantage côté web.
+## 4.1 — Le schéma Rust porte les 3 états
+
+`src/domain.rs` : deux énumérations remplacent les deux `bool`.
+
+```rust
+pub enum GpuVramPolicy { Auto, PreferP5, ForceP8Idle }
+// auto | prefer_p5 | force_p8_idle
+
+pub enum TimerResolutionPolicy { Standard1Ms, High0_5Ms, Coalesced15_6Ms }
+// standard_1ms | high_0_5ms | coalesced_15_6ms
+```
+
+`HardwareConfig` expose donc `gpu_vram_policy` et `timer_resolution` : exactement les noms et les valeurs que l'export web écrivait déjà. Les variantes sont renommées **une par une** (`#[serde(rename = "...")]`) ; `rename_all = "snake_case"` aurait produit `standard1_ms` et `high0_5ms`, incompatibles avec le contrat web.
+
+`TimerResolutionPolicy::ignores_timer_resolution()` remplace le booléen au point d'appel Windows (`PROCESS_POWER_THROTTLING_IGNORE_TIMER_RESOLUTION`) : seule la coalescence l'active. `Standard1Ms` et `High0_5Ms` ne l'activent pas, comme l'ancien `timer_coalescing = false`.
+
+## 4.2 — Migration des fichiers existants
+
+`src/config.rs` : `decode_profiles` et `decode_baseline` désérialisent d'abord en `toml::Value`, migrent, puis convertissent.
+
+- `gpu_force_p8_idle` → `gpu_vram_policy` (`true` → `force_p8_idle`, `false` → `auto`) ;
+- `timer_coalescing` → `timer_resolution` (`true` → `coalesced_15_6ms`, `false` → `standard_1ms`) ;
+- si la clé canonique existe déjà (exports web de la vague 1, qui écrivaient les deux), **elle gagne** ;
+- l'ancienne clé est toujours retirée : serde refuse un champ en double, et `prefer_p5` / `0,5 ms` ne sont pas représentables par un booléen.
+
+La même migration s'applique à `baseline_snapshot.toml`, sinon un snapshot d'origine serait silencieusement recapturé.
+
+## 4.3 — Le web n'a plus d'extension ni d'avertissement
+
+`src/data/profiles.ts` :
+
+- `serializeProfilesToToml` n'écrit que `gpu_vram_policy` et `timer_resolution` : l'export est le schéma Rust, sans clé supplémentaire ;
+- `parseProfilesToml` valide la valeur contre les 3 états connus (une chaîne inconnue retombe sur le profil par défaut, au lieu d'un cast aveugle) et accepte encore les booléens hérités ;
+- `getTomlPersistenceWarnings` est supprimé : il n'y a plus de perte à annoncer.
+
+`src/App.tsx` : `handleExportToml` n'a plus qu'un toast de succès.
+
+## 4.4 — Tests
+
+- **TypeScript** : le verrou de schéma exige désormais **exactement les 24 champs** de `HardwareConfig`, sans extension ; import d'un TOML legacy où les booléens remplacent les énumérations ; aller-retour `prefer_p5` / `high_0_5ms` ; valeur inconnue retombant sur le défaut.
+- **Rust** : migration des deux clés (dont le cas « clé canonique prioritaire »), aller-retour TOML des énumérations avec la forme exacte des chaînes, et table de vérité de `ignores_timer_resolution`.
+
+## Vérification
+
+| Commande | Résultat |
+|---|---|
+| `tsc --noEmit` | 0 erreur |
+| `vitest run` | **43/43** |
+| `vite build` | OK, 814,83 kB (240,87 kB gzip) |
+| `cargo check` | OK, 4 tests unitaires ajoutés |
+
+Non vérifié : l'interface (toast d'export, onglet « Source Rust », téléchargement `.zip`) n'a pas été ouverte.
 
 ---
 
 # Invariants à ne pas casser
 
-Neuf propriétés, chacune tenue par un test nommé. Si l'une rougit, c'est la modification qui est fautive, pas le test.
+Dix propriétés, chacune tenue par un test nommé. Si l'une rougit, c'est la modification qui est fautive, pas le test.
 
 | Invariant | Test garde-fou |
 |---|---|
@@ -280,21 +337,22 @@ Neuf propriétés, chacune tenue par un test nommé. Si l'une rougit, c'est la m
 | Aucun gain inventé (< 0,25 W rejeté) | « toute proposition … économise réellement ≥ 0,3 W » |
 | Fenêtre de confirmation réelle de 2,5 s | « exige une vraie fenêtre temporelle » |
 | `.ps1` non injectable, sans NVML sur iGPU | « buildWindowsPowerShellScript génère un script sûr » |
-| **Schéma TOML = 24 champs Rust + 2 extensions, exactement** | « verrouille le schéma : [profiles.config] contient exactement … » |
-| **Les seules pertes annoncées sont P3/prefer_p5 et P5/0,5 ms** | « getTomlPersistenceWarnings nomme les créneaux … » |
+| **Schéma TOML = 24 champs Rust, exactement, sans extension** | « verrouille le schéma : [profiles.config] contient exactement … » |
+| **Les 3 états (prefer_p5, 0,5 ms) survivent à l'aller-retour** | « le schéma à 3 états survit à l'aller-retour TOML » |
+| **Un TOML legacy à booléens reste lisible** | « parseProfilesToml décode un TOML legacy … » |
 
 ---
 
 # Idées à ne pas appliquer (et pourquoi)
 
-1. **Supprimer `gpu_vram_policy` / `timer_resolution` de l'export.** Non : elles préservent `prefer_p5` et `high_0_5ms` en web↔web. Un booléen Rust ne code que 2 états sur 3.
+1. **Supprimer `gpu_vram_policy` / `timer_resolution` de l'export (idée de la vague 1).** Non : c'était soigner le symptôme. La vague 4 a corrigé la cause — ces clés sont devenues les champs Rust eux-mêmes.
 2. **Revenir aux paliers de rendement PSU (0,835 / 0,885 / 0,905).** Non : non monotone — baisser la charge de 46 à 44,5 W faisait *monter* la consommation murale.
 3. **Remettre `nicEeeEnabled` dans la règle User `usb_wifi_idle`.** Non : réglage admin dans une proposition applicable en User ⇒ re-proposition infinie.
 4. **Remplacer la fenêtre 2,5 s par un compteur de cycles.** Non : deux re-renders à 50 ms validaient la bascule.
 5. **« Corriger » `noppme` (ps0_only → 0).** Non : déjà aligné sur `u32::from(cfg.nvme_apst != NvmeApst::Ps0Only)`, ligne 1240 de `rustProject.ts`.
 6. **Additionner les `latencyDeltaMs`.** Non : double comptage CPU/timer, total supérieur au budget réel.
 7. **Remplacer `ac == ERROR_SUCCESS && dc == ERROR_SUCCESS.0` par `.is_ok()`.** Non : `PowerWriteDCValueIndex` renvoie un `u32`, `.is_ok()` ne compile pas.
-8. **Masquer l'avertissement d'export quand les valeurs sont celles d'usine.** Non : ce serait précisément cacher le cas le plus fréquent (P3/P5), donc le seul que l'utilisateur n'a jamais eu l'occasion de découvrir.
+8. **Masquer l'avertissement d'export quand les valeurs sont celles d'usine.** Non : il fallait au contraire le montrer. Depuis la vague 4 la perte n'existe plus, l'avertissement a donc été supprimé avec sa cause.
 
 ---
 
@@ -307,17 +365,21 @@ Neuf propriétés, chacune tenue par un test nommé. Si l'une rougit, c'est la m
 | Assertion sur l'état **réel** des profils d'usine | un test doit décrire le système, pas l'intention du rédacteur |
 | Verrou de schéma par égalité exacte de clés | attrape les deux sens de dérive : champ oublié et clé non reconnue par serde |
 | Aucun changement de comportement produit | P3 reste en `prefer_p5`, P5 en `high_0_5ms` : ce sont des choix métier, pas des bugs |
+| Énumérations Rust à 3 variantes plutôt que `bool` | un `bool` ne peut représenter ni `prefer_p5` ni `0,5 ms` ; le schéma doit porter le modèle |
+| Migration au chargement plutôt que `serde(alias)` | les anciens exports web contiennent les deux clés, ce que serde refuse en double |
+| Migration appliquée aussi au `baseline_snapshot` | sinon un snapshot d'origine serait recapturé en silence |
 
 ---
 
 # Definition of done
 
 - [x] `npx tsc --noEmit` : 0 erreur
-- [x] `npx vitest run` : 42/42
-- [x] `npm run build` : succès, ~810 kB (239,6 kB gzip)
+- [x] `npx vitest run` : 43/43
+- [x] `npm run build` : succès, ~815 kB (240,9 kB gzip)
 - [x] Aucune occurrence de « 39 tests » dans `src/`
-- [x] Vague 2 : `npx vitest run` → 42/42
+- [x] Vague 2 : `npx vitest run` → 43/43
 - [ ] Export `profiles.toml` puis réimport : les 5 profils et l'autostart reviennent à l'identique
-- [ ] Export depuis l'UI : le toast orange liste `P3 : VRAM prefer_p5` et `P5 : timer 0,5 ms`
+- [ ] Export depuis l'UI : un seul toast vert, plus aucune perte (code en place, non vu à l'écran)
 - [x] `npm run check:rust` : 21 fichiers extraits, `cargo check` OK
+- [x] Vague 4 : import d'un `profiles.toml` legacy couvert côté Rust et côté TypeScript
 - [ ] `npm run dev` : l'app démarre, les 6 onglets s'ouvrent, la matrice adaptative affiche 7 lignes

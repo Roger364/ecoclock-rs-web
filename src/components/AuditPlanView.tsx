@@ -224,9 +224,9 @@ const FINDINGS: Finding[] = [
     priority: "P2",
     severity: "info",
     area: "Couverture",
-    title: "Couverture de tests TypeScript industrialisée (41 tests, Vitest)",
+    title: "Couverture de tests TypeScript industrialisée (43 tests, Vitest)",
     evidence: "La v3 ne couvrait ni la monotonie du modèle PSU, ni la convergence de l'optimiseur, ni le contrat TOML.",
-    action: "Suite Vitest de 41 tests (dont tests de propriétés) couvrant monotonie PSU, bornes, PL1, iGPU, convergence Pareto User, automate temporel, verrou du schéma TOML, pertes de round-trip et script .ps1.",
+    action: "Suite Vitest de 43 tests (dont tests de propriétés) couvrant monotonie PSU, bornes, PL1, iGPU, convergence Pareto User, automate temporel, verrou du schéma TOML, migration legacy et script .ps1.",
     impact: "Protection automatique contre toute régression physique, logique ou de contrat inter-couches.",
     status: "done",
   },
@@ -536,7 +536,7 @@ export const AuditPlanView: React.FC<AuditPlanViewProps> = ({
                   ["Mode intelligent", "Compteur + jitter", "Fenêtre sinceMs + matrice 7 cas"],
                   ["Export opérationnel", "Rapport .md seul", "Script .ps1 (-Restore) + .toml + .zip"],
                   ["A11y & Résilience", "Modales sans focus trap", "Focus trap x4 + ErrorBoundary"],
-                  ["Tests & CI", "30 tests", "41 tests Vitest + CI Windows"],
+                  ["Tests & CI", "30 tests", "43 tests Vitest + CI Windows"],
                   ["Build TypeScript", "OK", "tsc strict + Vite OK (vérifié)"],
                 ].map(([label, before, after]) => (
                   <tr key={label}>

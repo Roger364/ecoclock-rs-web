@@ -27,7 +27,6 @@ import {
   DEFAULT_AUTOSTART,
   DEFAULT_PROFILES,
   escapeTomlString,
-  getTomlPersistenceWarnings,
   parseProfilesToml,
   serializeProfilesToToml,
   STOCK_BASELINE_CONFIG,
@@ -599,16 +598,23 @@ describe("blindage de la désérialisation (profils, autostart, conditions & TOM
     }
   });
 
-  it("parseProfilesToml décode aussi un fichier TOML minimal écrit par ecoclock.exe (Rust pur)", () => {
-    const toml = serializeProfilesToToml(DEFAULT_PROFILES, DEFAULT_AUTOSTART)
-      .split("\n")
-      .filter((l) => !l.startsWith("gpu_vram_policy") && !l.startsWith("timer_resolution"))
-      .join("\n");
-    const parsed = parseProfilesToml(toml);
+  it("parseProfilesToml décode un TOML legacy où les booléens remplacent les énumérations", () => {
+    // Forme exacte des fichiers écrits avant la vague 4 : pas de clé canonique, deux booléens.
+    const legacy = serializeProfilesToToml(DEFAULT_PROFILES, DEFAULT_AUTOSTART)
+      .replace(/^gpu_vram_policy = ".*"$/gm, (line) => `gpu_force_p8_idle = ${line.includes("force_p8_idle")}`)
+      .replace(/^timer_resolution = ".*"$/gm, (line) => `timer_coalescing = ${line.includes("coalesced_15_6ms")}`);
+    expect(legacy).toContain("gpu_force_p8_idle = true");
+    expect(legacy).not.toContain("gpu_vram_policy");
+    expect(legacy).not.toContain("timer_resolution");
+
+    const parsed = parseProfilesToml(legacy);
     expect(parsed).not.toBeNull();
     const restored = sanitizeProfiles(parsed!.profiles);
     expect(restored[0].config.gpuVramPolicy).toBe("force_p8_idle");
     expect(restored[0].config.timerResolution).toBe("coalesced_15_6ms");
+    // P3 (prefer_p5) et P5 (0,5 ms) étaient aplatis par l'ancien binaire : c'est la perte documentée.
+    expect(restored[2].config.gpuVramPolicy).toBe("auto");
+    expect(restored[4].config.timerResolution).toBe("standard_1ms");
     expect(restored[0].config.pcieAspm).toBe("l1_substates");
     expect(restored[0].config.wifiPowerMode).toBe("medium_psp");
   });
@@ -633,8 +639,10 @@ describe("blindage de la désérialisation (profils, autostart, conditions & TOM
     expect(igpuScript).not.toContain("nvidia-smi.exe -pl");
   });
 
-  it("verrouille le schéma : [profiles.config] contient exactement les 24 champs Rust + 2 extensions web", () => {
+  it("verrouille le schéma : [profiles.config] contient exactement les 24 champs de HardwareConfig", () => {
     // Source de vérité : struct HardwareConfig de src/data/rustProject.ts (serde snake_case).
+    // Depuis la vague 4, les deux énumérations à 3 états sont des champs Rust de première classe :
+    // l'export n'a plus aucune extension propre au web.
     const RUST_FIELDS = [
       "cpu_max_percent",
       "cpu_min_percent",
@@ -647,7 +655,7 @@ describe("blindage de la désérialisation (profils, autostart, conditions & TOM
       "bg_eco_qos",
       "gpu_power_limit_pct",
       "gpu_clock_cap_mhz",
-      "gpu_force_p8_idle",
+      "gpu_vram_policy",
       "gpu_zero_rpm",
       "igpu_eco_mode",
       "pcie_aspm",
@@ -659,11 +667,8 @@ describe("blindage de la désérialisation (profils, autostart, conditions & TOM
       "nic_eee_802_3az",
       "wifi_power",
       "usb_selective_suspend",
-      "timer_coalescing",
+      "timer_resolution",
     ];
-    // Volontairement hors HardwareConfig Rust : conservent prefer_p5 / high_0_5ms en web↔web.
-    const WEB_EXTENSIONS = ["gpu_vram_policy", "timer_resolution"];
-
     const toml = serializeProfilesToToml(DEFAULT_PROFILES, DEFAULT_AUTOSTART);
     const profileBlocks = toml.split("[[profiles]]").slice(1);
     expect(profileBlocks).toHaveLength(5);
@@ -676,29 +681,31 @@ describe("blindage de la désérialisation (profils, autostart, conditions & TOM
         .filter((line) => line.length > 0 && !line.startsWith("#") && line.includes("="))
         .map((line) => line.slice(0, line.indexOf("=")).trim());
 
-      expect(new Set(keys)).toEqual(new Set([...RUST_FIELDS, ...WEB_EXTENSIONS]));
-      expect(keys).toHaveLength(RUST_FIELDS.length + WEB_EXTENSIONS.length);
+      expect(new Set(keys)).toEqual(new Set(RUST_FIELDS));
+      expect(keys).toHaveLength(RUST_FIELDS.length);
     }
   });
 
-  it("getTomlPersistenceWarnings nomme les créneaux que le binaire Rust aplatit, et eux seuls", () => {
-    // État d'usine réel : P3 « Jeu » utilise prefer_p5, P5 « Stock » hérite du timer 0,5 ms.
-    // Ces deux-là ne sont pas représentables par les booléens Rust (prefer_p5 ≠ force_p8_idle, 0,5 ms ≠ 1 ms).
-    expect(getTomlPersistenceWarnings(DEFAULT_PROFILES)).toEqual([
-      "P3 : VRAM prefer_p5 → reviendra à auto",
-      "P5 : timer 0,5 ms → reviendra à 1 ms",
-    ]);
+  it("le schéma à 3 états survit à l'aller-retour TOML (plus aucune perte web → Rust)", () => {
+    const toml = serializeProfilesToToml(DEFAULT_PROFILES, DEFAULT_AUTOSTART);
+    // Noms de variantes explicites : une conversion automatique produirait standard1_ms.
+    expect(toml).toContain('gpu_vram_policy = "prefer_p5"');
+    expect(toml).toContain('timer_resolution = "high_0_5ms"');
+    expect(toml).not.toContain("gpu_force_p8_idle");
+    expect(toml).not.toContain("timer_coalescing");
 
-    // Un jeu de profils uniquement composé d'états représentables ne doit rien signaler.
-    const faithful = DEFAULT_PROFILES.map((p) => ({
-      ...p,
-      config: { ...p.config, timerResolution: "coalesced_15_6ms" as const, gpuVramPolicy: "force_p8_idle" as const },
-    }));
-    expect(getTomlPersistenceWarnings(faithful)).toEqual([]);
+    const restored = sanitizeProfiles(parseProfilesToml(toml)!.profiles);
+    expect(restored[2].config.gpuVramPolicy).toBe("prefer_p5");
+    expect(restored[4].config.timerResolution).toBe("high_0_5ms");
+  });
 
-    // standard_1ms partage timer_coalescing=false avec coalesced : aucune perte annoncée.
-    const standard = faithful.map((p) => ({ ...p, config: { ...p.config, timerResolution: "standard_1ms" as const } }));
-    expect(getTomlPersistenceWarnings(standard)).toEqual([]);
+  it("une valeur d'énumération inconnue retombe sur le profil par défaut, sans cast aveugle", () => {
+    const corrupted = serializeProfilesToToml(DEFAULT_PROFILES, DEFAULT_AUTOSTART).replace(
+      'gpu_vram_policy = "prefer_p5"',
+      'gpu_vram_policy = "bogus"'
+    );
+    const restored = sanitizeProfiles(parseProfilesToml(corrupted)!.profiles);
+    expect(restored[2].config.gpuVramPolicy).toBe("prefer_p5");
   });
 
   it("ne propose l'EEE 802.3az que sur une machine réellement dotée d'un port Ethernet", () => {

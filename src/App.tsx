@@ -39,7 +39,6 @@ import {
 import { AdaptiveRule, AdaptiveSettings } from "./types/adaptive";
 import {
   DEFAULT_PROFILES,
-  getTomlPersistenceWarnings,
   parseProfilesToml,
   serializeProfilesToToml,
   STOCK_BASELINE_CONFIG,
@@ -456,21 +455,11 @@ export function App() {
     });
     downloadText("profiles.toml", toml, "text/plain;charset=utf-8");
 
-    // ecoclock.exe ne persiste que deux booléens : signaler ce qu'un aller-retour Rust aplatirait.
-    const losses = getTomlPersistenceWarnings(profiles);
-    if (losses.length > 0) {
-      pushToast(
-        "warning",
-        `profiles.toml exporté — ${losses.length} réglage(s) propre(s) au web`,
-        `${losses.join(" · ")}. Ils reviendront à leur valeur Rust au premier enregistrement par ecoclock.exe ; les autres champs sont conservés.`
-      );
-    } else {
-      pushToast(
-        "success",
-        "profiles.toml exporté (schéma Rust 1:1)",
-        "Copiable tel quel dans %APPDATA%\\EcoClock\\profiles.toml."
-      );
-    }
+    pushToast(
+      "success",
+      "profiles.toml exporté (schéma Rust 1:1)",
+      "Copiable tel quel dans %APPDATA%\\EcoClock\\profiles.toml."
+    );
     appendLog("Config", "ExportToml(profiles.toml — compatible ProfileStore Rust)", undefined, 95);
   };
 
