@@ -3,7 +3,7 @@
 Base : `rust-hardware-underclocking-utility4.zip` (17/11/2026, 54 fichiers, 16 121 lignes `src/`).
 Organisation en **vagues** : une vague = un ensemble de correctifs sans interaction entre eux, validable en une seule passe de vérification.
 
-**État vérifié à l'instant :** `tsc --noEmit` 0 erreur · `vitest run` **43/43** · `vite build` OK (~815 kB / 240,9 kB gzip) · `cargo check` OK sur le crate livré.
+**État vérifié à l'instant :** `tsc --noEmit` 0 erreur · `vitest run` **43/43** · `vite build` OK (~816 kB / 241,1 kB gzip) · `cargo check` OK sur le crate livré.
 Référence d'origine (v4 non modifiée) : 39 tests, 808,45 kB / 239,10 kB.
 
 | Vague | Contenu | Statut | Tests |
@@ -323,7 +323,7 @@ Le test de schéma ne vérifiait que les blocs `[profiles.config]`. Il contrôle
 |---|---|
 | `tsc --noEmit` | 0 erreur |
 | `vitest run` | **43/43** |
-| `vite build` | OK, 814,83 kB (240,87 kB gzip) |
+| `vite build` | OK, 815,87 kB (241,09 kB gzip) |
 | `cargo check --all-targets` | OK — les tests du crate sont désormais compilés, pas seulement le binaire |
 | `cargo test` | **9/9** (5 ajoutés : migration, aller-retour, table de vérité, rechargement complet) |
 
@@ -382,7 +382,7 @@ Dix propriétés, chacune tenue par un test nommé. Si l'une rougit, c'est la mo
 
 - [x] `npx tsc --noEmit` : 0 erreur
 - [x] `npx vitest run` : 43/43
-- [x] `npm run build` : succès, ~815 kB (240,9 kB gzip)
+- [x] `npm run build` : succès, ~816 kB (241,1 kB gzip)
 - [x] Aucune occurrence de « 39 tests » dans `src/`
 - [x] Vague 2 : `npx vitest run` → 43/43
 - [ ] Export `profiles.toml` puis réimport : les 5 profils et l'autostart reviennent à l'identique
