@@ -1,13 +1,13 @@
 # Feuille de route
 
 État au 18/11/2026 : configurateur React + crate Rust embarqué, 43 tests TypeScript, 10 tests Rust,
-GUI réparée, dépôt public. Phase 1 (crédibilité) faite. Le détail technique, les décisions et les pièges sont dans
+GUI réparée, dépôt public. Phases 1 et 2 faites. Le détail technique, les décisions et les pièges sont dans
 [PLAN-ACTIONS.md](PLAN-ACTIONS.md) ; ce document ne dit que **quoi faire ensuite, dans quel ordre**.
 
 L'ordre n'est pas arbitraire : un dépôt public doit d'abord être utilisable et honnête, ensuite
 automatisé, ensuite distribuable — les fonctionnalités viennent après.
 
-## Phase 1 — Crédibilité (✅ faite le 18/11/2026, ≈ 1 h)
+## Phase 1 — Crédibilité (✅ faite le 17/11/2026, ≈ 1 h)
 
 | # | Action | Pourquoi | Fini quand |
 |---|---|---|---|
@@ -15,7 +15,7 @@ automatisé, ensuite distribuable — les fonctionnalités viennent après.
 | 2 | Séparer **mesuré** et **modélisé** | l'interface affiche des températures et des décibels calculés par `src/engine/physics.ts`, pas lus sur un capteur ; un lecteur doit le savoir avant de citer un chiffre | tableau « mesuré / modélisé » dans le README |
 | 3 | Une capture d'écran | un projet visuel sans image ne se clique pas | image dans `docs/` et affichée en tête du README |
 
-## Phase 2 — Qualité continue (≈ 2 h)
+## Phase 2 — Qualité continue (✅ faite le 17/11/2026, ≈ 2 h)
 
 | # | Action | Pourquoi | Fini quand |
 |---|---|---|---|

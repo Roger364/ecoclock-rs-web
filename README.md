@@ -1,5 +1,8 @@
 # EcoClock-rs Web
 
+[![CI](https://github.com/Roger364/ecoclock-rs-web/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Roger364/ecoclock-rs-web/actions/workflows/ci.yml)
+[![Licence MIT](https://img.shields.io/github/license/Roger364/ecoclock-rs-web)](LICENSE)
+
 Configurateur web (React + Vite) pour un utilitaire Windows d'underclocking écrit en Rust.
 L'interface construit, compare et exporte des profils d'alimentation sobres ; le crate Rust
 embarqué les applique via les API Windows documentées, sans pilote noyau.

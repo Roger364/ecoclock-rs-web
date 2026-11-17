@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: Web (tsc, vitest, build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npx vitest run
+      - run: npm run build
+
+  rust:
+    name: Crate Rust (check + tests)
+    # Le crate vise Windows (powrprof, NVML, jeu de tests Win32) : un runner
+    # Ubuntu ne compilerait pas la même chose que ce qui est livré.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ hashFiles('src/data/rustProject.ts', 'src/data/rustExtras.ts') }}
+      - run: npm ci
+      # Le crate n'existe pas sur le disque : il est reconstitué depuis les
+      # littéraux TypeScript. --keep laisse .check-rust/ pour l'étape suivante.
+      - run: npm run check:rust -- --keep
+      - run: cargo test --quiet --all-targets
+        working-directory: .check-rust
