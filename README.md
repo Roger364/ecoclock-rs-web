@@ -58,7 +58,7 @@ npm run build    # bundle single-file dans dist/
 
 ## Livrable Rust
 
-L'onglet « Code Rust & .zip » assemble un crate complet (21 fichiers) téléchargeable. Il n'existe
+L'onglet « Code Rust & .zip » assemble un crate complet (22 fichiers) téléchargeable. Il n'existe
 pas sur le disque : il est généré depuis `src/data/rustProject.ts`. La garde :
 
 ```bash
@@ -70,13 +70,14 @@ npm run check:rust   # extrait le crate puis cargo check --all-targets
 | Commande | Résultat |
 |---|---|
 | `npx vitest run` | 48/48 |
-| `npm run check:rust -- --keep`, puis `cargo test` dans `.check-rust/` | 12/12 |
+| `npm run check:rust -- --keep`, puis `cargo test` dans `.check-rust/` | 15/15 |
 | `npx tsc --noEmit` | 0 erreur |
 
 ## Sécurité
 
 - Aucun pilote noyau, aucun service : uniquement les API Windows documentées (`powrprof`, `ChangeDisplaySettingsExW`) et NVML pour NVIDIA.
 - `RollbackGuard` restaure le profil de départ à la sortie si demandé.
+- Chaque application est journalisée dans `%APPDATA%\EcoClock\journal.log` : horodatage, valeurs demandées, refus et droits. Le journal survit au redémarrage et se lit avec `ecoclock --journal`.
 - Le script `.ps1` exporte le plan actif (`baseline-scheme.pow`) avant toute modification et vérifie sa restauration.
 
 ## Limites connues
@@ -91,7 +92,7 @@ npm run check:rust   # extrait le crate puis cargo check --all-targets
 
 ```
 src/engine/                  physique, optimisation Pareto, validation, tests
-src/data/rustProject.ts      crate Rust embarqué (21 fichiers)
+src/data/rustProject.ts      crate Rust embarqué (22 fichiers)
 src/utils/windowsScript.ts   générateur du script .ps1
 PLAN-ACTIONS.md              état du projet, décisions et pièges connus
 ```

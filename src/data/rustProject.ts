@@ -133,6 +133,7 @@ fn main() {
 
 mod config;
 mod domain;
+mod journal;
 mod optimizer;
 mod platform;
 mod safety;
@@ -152,6 +153,7 @@ struct CliArgs {
     headless_only: bool,       // Applique le profil puis quitte proprement
     restore_stock: bool,       // Restaure immédiatement l'état initial
     check_only: bool,          // Lecture seule : affiche l'état et les propositions sans rien modifier
+    show_journal: bool,        // Affiche les dernières applications enregistrées puis quitte
 }
 
 impl CliArgs {
@@ -171,6 +173,7 @@ impl CliArgs {
                 "--headless" => out.headless_only = true,
                 "--restore-baseline" => out.restore_stock = true,
                 "--check" => out.check_only = true,
+                "--journal" => out.show_journal = true,
                 _ => {}
             }
         }
@@ -180,6 +183,18 @@ impl CliArgs {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = CliArgs::parse();
+
+    // Journal consultable sans ouvrir l'Explorateur ni l'interface.
+    if args.show_journal {
+        let path = journal::default_path().ok_or("Variable APPDATA introuvable")?;
+        println!("Journal : {}", path.display());
+        match journal::read_tail(&path, 20) {
+            Ok(tail) if !tail.is_empty() => println!("{tail}"),
+            _ => println!("(aucune application enregistree)"),
+        }
+        return Ok(());
+    }
+
     let repo = ConfigRepository::new()?;
     let mut store = repo.load_or_create_default()?;
     let mut controller = PlatformController::init();
@@ -866,6 +881,143 @@ timer_resolution = "high_0_5ms"
 `,
   },
   {
+    path: "src/journal.rs",
+    layer: "Entrée & Sécurité",
+    summary: "Journal append-only des applications dans `%APPDATA%\\EcoClock\\journal.log` : horodatage UTC, valeurs clés, refus et droits.",
+    content: `use std::{
+    fs::{self, OpenOptions},
+    io::{self, Write},
+    path::{Path, PathBuf},
+    time::{SystemTime, UNIX_EPOCH},
+};
+
+use crate::{domain::HardwareConfig, platform::ApplyReport};
+
+/// Chemin du journal : %APPDATA%/EcoClock/journal.log
+pub fn default_path() -> Option<PathBuf> {
+    std::env::var_os("APPDATA")
+        .map(PathBuf::from)
+        .map(|base| base.join("EcoClock").join("journal.log"))
+}
+
+/// Une ligne par application. Le fichier n'est jamais reecrit : l'historique
+/// survit a un redemarrage, la ou le statut affiche disparait avec la session.
+/// Une erreur d'ecriture ne doit jamais faire echouer l'application elle-meme.
+pub fn record(path: &Path, cfg: &HardwareConfig, report: &ApplyReport, admin: bool) -> io::Result<()> {
+    if let Some(dir) = path.parent() {
+        fs::create_dir_all(dir)?;
+    }
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let mut file = OpenOptions::new().create(true).append(true).open(path)?;
+    writeln!(file, "{}", format_line(now, cfg, report, admin))
+}
+
+/// Resume compact : de quoi reconstituer ce qui a ete demande et ce qui a ete refuse.
+pub fn format_line(at_unix: u64, cfg: &HardwareConfig, report: &ApplyReport, admin: bool) -> String {
+    let refuses = if report.unsupported_items.is_empty() {
+        "-".to_string()
+    } else {
+        report.unsupported_items.join(",")
+    };
+    format!(
+        "{} admin={} cpu_max={}% cap={}MHz epp={}% pl1={}W gpu={}%/{}MHz appliques={} refuses={} admin_ignores={}",
+        iso8601_utc(at_unix),
+        admin,
+        cfg.cpu_max_percent,
+        cfg.cpu_freq_cap_mhz,
+        cfg.cpu_epp_percent,
+        cfg.cpu_pl1_watts,
+        cfg.gpu_power_limit_pct,
+        cfg.gpu_clock_cap_mhz,
+        report.applied_items.len(),
+        refuses,
+        report.skipped_requires_admin.len()
+    )
+}
+
+/// Dernieres lignes, sans dependance : le journal reste lisible dans Notepad.
+pub fn read_tail(path: &Path, lines: usize) -> io::Result<String> {
+    let content = fs::read_to_string(path)?;
+    let all: Vec<&str> = content.lines().filter(|l| !l.trim().is_empty()).collect();
+    let start = all.len().saturating_sub(lines);
+    Ok(all[start..].join("\\n"))
+}
+
+/// Date civile UTC en ISO 8601, sans crate de calendrier (algorithme de Howard Hinnant).
+pub fn iso8601_utc(seconds: u64) -> String {
+    let days = (seconds / 86_400) as i64;
+    let rem = seconds % 86_400;
+    let (year, month, day) = civil_from_days(days);
+    format!(
+        "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
+        year,
+        month,
+        day,
+        rem / 3_600,
+        (rem % 3_600) / 60,
+        rem % 60
+    )
+}
+
+fn civil_from_days(days: i64) -> (i64, u32, u32) {
+    let z = days + 719_468;
+    let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
+    let year = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = doy - (153 * mp + 2) / 5 + 1;
+    let month = if mp < 10 { mp + 3 } else { mp - 9 };
+    let year = if month <= 2 { year + 1 } else { year };
+    (year, month as u32, day as u32)
+}
+
+#[cfg(test)]
+mod journal_tests {
+    use super::{format_line, iso8601_utc, read_tail, record};
+    use crate::{domain::HardwareConfig, platform::ApplyReport};
+
+    #[test]
+    fn horodate_en_utc_sans_dependance() {
+        assert_eq!(iso8601_utc(0), "1970-01-01T00:00:00Z");
+        assert_eq!(iso8601_utc(1_700_000_000), "2023-11-14T22:13:20Z");
+        assert_eq!(iso8601_utc(1_709_164_800), "2024-02-29T00:00:00Z");
+    }
+
+    #[test]
+    fn une_ligne_porte_les_valeurs_et_les_refus() {
+        let cfg = HardwareConfig::nominal_stock();
+        let mut report = ApplyReport::default();
+        report.applied_items.push("PROCTHROTTLEMAX");
+        report.unsupported_items.push("IGPU_BIAS");
+        let line = format_line(0, &cfg, &report, false);
+        assert!(line.starts_with("1970-01-01T00:00:00Z admin=false"));
+        assert!(line.contains("appliques=1"));
+        assert!(line.contains("refuses=IGPU_BIAS"));
+    }
+
+    #[test]
+    fn ecrit_en_append_et_relit_les_dernieres_lignes() {
+        let dir = std::env::temp_dir().join(format!("ecoclock-journal-{}", std::process::id()));
+        let path = dir.join("journal.log");
+        let _ = std::fs::remove_dir_all(&dir);
+        let cfg = HardwareConfig::nominal_stock();
+        let report = ApplyReport::default();
+        record(&path, &cfg, &report, false).unwrap();
+        record(&path, &cfg, &report, true).unwrap();
+        let tail = read_tail(&path, 1).unwrap();
+        assert_eq!(tail.lines().count(), 1);
+        assert!(tail.contains("admin=true"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}
+`,
+  },
+  {
     path: "src/safety.rs",
     layer: "Entrée & Sécurité",
     summary: "Garde RAII `RollbackGuard` : restaure automatiquement l'état matériel d'origine sur fermeture, arrêt Windows ou panic.",
@@ -1036,6 +1188,11 @@ impl PlatformController {
             if cfg.nvme_apst != crate::domain::NvmeApst::Ps0Only {
                 report.skipped_requires_admin.push("NVMe APST (PS3/PS4) & SATA DIPM");
             }
+        }
+
+        // Point unique de passage : CLI, Safe-Boot et GUI sont tous journalises ici.
+        if let Some(path) = crate::journal::default_path() {
+            let _ = crate::journal::record(&path, &cfg, &report, self.is_admin());
         }
 
         report
@@ -2379,6 +2536,19 @@ impl eframe::App for EcoClockApp {
                     let ratio = ((3300.0 - 800.0) / (5200.0 - 800.0)) as f32;
                     let x = cpu_rect.left() + pad + track * ratio;
                     let y = cpu_rect.center().y;
+                    // Zone morte mesuree : sous le repere, le plafond ne change plus rien.
+                    // Traits fins sous la piste : un aplat ressemblerait a une barre de progression.
+                    let mut hatch_x = cpu_rect.left() + pad;
+                    while hatch_x < x {
+                        cols[0].painter().line_segment(
+                            [egui::pos2(hatch_x, y + 5.0), egui::pos2(hatch_x, y + 7.0)],
+                            egui::Stroke::new(
+                                1.0_f32,
+                                egui::Color32::from_rgba_unmultiplied(251, 191, 36, 110),
+                            ),
+                        );
+                        hatch_x += 4.0;
+                    }
                     cols[0].painter().line_segment(
                         [egui::pos2(x, y - 5.0), egui::pos2(x, y + 5.0)],
                         egui::Stroke::new(1.0_f32, egui::Color32::from_rgb(251, 191, 36)),

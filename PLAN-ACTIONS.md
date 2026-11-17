@@ -186,6 +186,17 @@ Détection retenue : le **code retour de l'écriture**. Rust le consigne dans `A
 8. **Clés `PowerSchemes` protégées** : même élevé, un administrateur ne peut pas supprimer une valeur écrite via l'API ; il faut passer par l'API elle-même.
 9. **Backtick dans une doc Rust** : le contenu des fichiers Rust vit dans un template literal TypeScript ; un backtick non échappé dans un commentaire ferme la chaîne et casse l'assemblage (`Expected "}"`). Même classe que les `\"` de la vague 3.
 10. **Écrire ne suffit pas** : sans `PowerSetActiveScheme` après `PowerWriteACValueIndex`, le système peut conserver l'ancien réglage. Le crate le fait ; le banc aussi depuis la deuxième campagne.
+11. **`\n` dans un template literal** : un `join("\n")` écrit tel quel dans `rustProject.ts` devient un vrai saut de ligne dans le Rust généré et casse la chaîne. Il faut `\\n` dans le TS.
+12. **Un aplat n'est pas une hachure** : sur egui, un rectangle ambre semi-transparent sous le repère ressemblait à une barre de progression. Des traits fins sous la piste disent « zone morte » sans ambiguïté.
+
+---
+
+# Vague 11 — Journal & zone morte (18/11/2026)
+
+1. **Journal au point unique.** `PlatformController::apply_config` est le seul passage de toutes les écritures (CLI, Safe-Boot, GUI) : le journal y est écrit, donc aucun chemin ne peut l'oublier. Une erreur d'écriture est ignorée : elle ne doit jamais faire échouer une application.
+2. **Format une ligne.** Horodatage UTC, droits, valeurs clés et refus, sans JSON ni dépendance de date : lisible dans Notepad et parsable. `--journal` montre les 20 dernières lignes et le chemin réel.
+3. **Zone morte hachurée, pas bridée.** Le curseur garde toute sa plage (décision de la vague 10) ; sous le repère, des hachures signalent l'absence d'effet mesuré et la valeur affiche « aucun gain sous 3 300 (mesuré) ».
+4. **Pas de plancher inventé.** Le plancher de 3 342 MHz est propre au 5900X ; les profils AMD du web (7800X3D, 7840HS) n'ont pas été mesurés. On annote, on ne modifie pas le modèle physique.
 
 ---
 

@@ -47,6 +47,13 @@ Le `.ps1` n'est pas un asset de release : il est généré par l'application pou
 | 11 | Détecter le vendor CPU (Intel/AMD) ✅ détection + campagne CPPC2 | `PROCFREQMAX` est Intel-first ; côté AMD c'est CPPC2 qui compte. Mesure sur 5900X : EPP sans effet, plafond à un cran, Turbo -30 %. L'adaptation AMD n'a donc rien de mesuré à proposer de plus que l'existant |
 | 12 | Interface FR/EN | le dépôt est public, l'interface est francophone |
 
+## Phase 6 — Auditabilité (vague 11)
+
+| # | Action | Pourquoi | Fini quand |
+|---|---|---|---|
+| 13 | Journal d'application ✅ | le statut disparaissait avec la session : impossible de dire ce qui avait été écrit, refusé ou restauré | une ligne par application dans `%APPDATA%\EcoClock\journal.log`, relue par `ecoclock --journal` |
+| 14 | Zone morte du curseur ✅ | sous 3,3 GHz, le plafond n'agit plus sur le 5900X ; l'interface laissait croire à un gain | hachures sous la piste (web + egui) et valeur annotée « aucun gain sous 3 300 (mesuré) » |
+
 ## Ce que je ne ferais pas
 
 - **Ajouter des réglages sans mesure derrière.** Chaque levier doit avoir une preuve de débit, de température ou de bruit — sinon c'est du décor.

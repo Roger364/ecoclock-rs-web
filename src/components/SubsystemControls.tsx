@@ -217,11 +217,28 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
                   tooltipKey="cpu_freq_cap"
                   extraBeforeAfter={`${beforeTel.cpuEffectivePClockMhz} MHz (${beforeTel.cpuVidMv} mV) → ${afterTel.cpuEffectivePClockMhz} MHz (${afterTel.cpuVidMv} mV)`}
                   badge={renderAdminGate(false)}
-                  valueText={`${config.cpuFreqCapMhz} MHz · VID ~${Math.round(cpuVoltageAtFreq(config.cpuFreqCapMhz) * 1000)} mV`}
+                  valueText={
+                    isAmd && config.cpuFreqCapMhz < markerMhz
+                      ? `${config.cpuFreqCapMhz} MHz demandés · aucun gain sous 3 300 (mesuré)`
+                      : `${config.cpuFreqCapMhz} MHz · VID ~${Math.round(cpuVoltageAtFreq(config.cpuFreqCapMhz) * 1000)} mV`
+                  }
                 >
                   <div className="relative pt-4">
                     {isAmd && (
                       <>
+                        <div
+                          aria-hidden
+                          className="pointer-events-none absolute"
+                          style={{
+                            left: "7px",
+                            width: `calc((100% - 15px) * ${markerRatio})`,
+                            top: "1rem",
+                            height: "6px",
+                            borderRadius: "9999px",
+                            backgroundImage:
+                              "repeating-linear-gradient(45deg, rgba(251,191,36,0.28) 0 2px, transparent 2px 6px)",
+                          }}
+                        />
                         <div
                           aria-hidden
                           className="pointer-events-none absolute border-l border-dashed border-amber-400/70"
