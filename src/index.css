@@ -1,0 +1,122 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    font-family: "Inter", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+  }
+
+  code,
+  pre,
+  .font-mono {
+    font-family: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Custom precision range input */
+input[type="range"].eco-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 9999px;
+  background: #232B38;
+  outline: none;
+  cursor: pointer;
+}
+
+input[type="range"].eco-slider:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+input[type="range"].eco-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 9999px;
+  background: #E6ECF5;
+  border: 2px solid #10B981;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
+  transition: transform 0.12s ease, border-color 0.12s ease, background-color 0.12s ease;
+}
+
+input[type="range"].eco-slider:not(:disabled):hover::-webkit-slider-thumb {
+  transform: scale(1.14);
+  background: #ffffff;
+  border-color: #34D399;
+}
+
+input[type="range"].eco-slider.admin-slider::-webkit-slider-thumb {
+  border-color: #F59E0B;
+}
+
+input[type="range"].eco-slider::-moz-range-thumb {
+  width: 15px;
+  height: 15px;
+  border-radius: 9999px;
+  background: #E6ECF5;
+  border: 2px solid #10B981;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
+}
+
+/* Accessibilité : focus visible homogène */
+:focus-visible {
+  outline: 2px solid #34d399;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.skip-link {
+  position: absolute;
+  left: 12px;
+  top: -60px;
+  z-index: 100;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #10b981;
+  color: #052e16;
+  font-size: 12px;
+  font-weight: 700;
+  transition: top 0.15s ease;
+}
+
+.skip-link:focus {
+  top: 12px;
+}
+
+/* Respect du réglage système « réduire les animations » */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Subtle native scrollbars */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0F1319;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #283140;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #384559;
+}

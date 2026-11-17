@@ -1,0 +1,9 @@
+# Dépendances (regénérables par `npm ci`)
+node_modules/
+
+# Build de production (regénérable par `npm run build`)
+dist/
+
+# Divers
+*.log
+.DS_Store
