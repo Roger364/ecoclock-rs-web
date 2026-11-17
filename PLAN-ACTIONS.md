@@ -363,6 +363,25 @@ Dix propriétés, chacune tenue par un test nommé. Si l'une rougit, c'est la mo
 
 ---
 
+## Validation en Windows Sandbox (17/11/2026)
+
+Binaire **debug** (le sous-système console reste actif, donc les `println!` sont lisibles) reconstruit avec `-C target-feature=+crt-static` : sans cela l'image Sandbox, qui n'embarque pas le runtime Visual C++, tue le processus en `0xC0000135` avant la moindre ligne de code applicatif — ce qui avait faussé la première campagne.
+
+| Test | Attendu | Obtenu |
+|---|---|---|
+| T1 `--check` sans `profiles.toml` | crée le fichier au schéma canonique | OK, aucun ancien booléen |
+| T2 migration legacy puis `--apply-profile 3` | `cpu_max_percent` = 55 appliqué | OK (55), `gpu_vram_policy = auto` |
+| T3 témoin canonique P3 = 55 | 55 appliqué | OK |
+| T4 `--restore-baseline` | retour au baseline capturé (100) | OK |
+| T5 `profiles.toml` après chargement | inchangé octet pour octet | OK (md5 identique) |
+| T6 `.ps1` P1 puis `-Restore`, deux fois | 92 puis 100 | OK ×2 |
+| T7 `.ps1 -Restore` sans sauvegarde | refus explicite, état inchangé | OK (code 1) |
+| T8 interface native | démarre sans GPU | vivante après 6 s |
+| T9 `powercfg` direct (référence) | 77 appliqué | OK |
+
+T6 a révélé un défaut réel : `$out -match ...` sur la sortie **multi-lignes** de `powercfg /import` laisse `$Matches` vide, donc `setactive` n'était jamais appelé alors que le script affichait `[OK]`. La restauration extrait maintenant le GUID de la sortie aplatie (`[regex]::Match`) et renvoie le code 1 avec un message rouge en cas d'échec.
+
+---
 # Journal des décisions
 
 | Décision | Raison |
@@ -382,9 +401,10 @@ Dix propriétés, chacune tenue par un test nommé. Si l'une rougit, c'est la mo
 
 - [x] `npx tsc --noEmit` : 0 erreur
 - [x] `npx vitest run` : 43/43
-- [x] `npm run build` : succès, ~816 kB (241,1 kB gzip)
+- [x] `npm run build` : succès, ~817 kB (241,4 kB gzip)
 - [x] Aucune occurrence de « 39 tests » dans `src/`
 - [x] Vague 2 : `npx vitest run` → 43/43
+- [x] Validation en Windows Sandbox : 9 tests, dont migration legacy et restauration `.ps1`
 - [ ] Export `profiles.toml` puis réimport : les 5 profils et l'autostart reviennent à l'identique
 - [ ] Export depuis l'UI : un seul toast vert, plus aucune perte (code en place, non vu à l'écran)
 - [x] `npm run check:rust` : 21 fichiers extraits, `cargo check` OK

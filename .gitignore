@@ -7,6 +7,9 @@ dist/
 # Extraction temporaire du crate Rust (npm run check:rust --keep)
 .check-rust/
 
+# Harnais de test Windows Sandbox (jetable)
+.sandbox/
+
 # Divers
 *.log
 .DS_Store
