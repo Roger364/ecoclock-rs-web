@@ -4,6 +4,8 @@ Configurateur web (React + Vite) pour un utilitaire Windows d'underclocking écr
 L'interface construit, compare et exporte des profils d'alimentation sobres ; le crate Rust
 embarqué les applique via les API Windows documentées, sans pilote noyau.
 
+**Feuille de route** : [ROADMAP.md](ROADMAP.md) — licence, intégration continue, releases, puis le reste.
+
 ## Fonctionnalités
 
 - **5 profils** (éco-productivité, silence, jeu, veille active, stock) avec comparateur avant/après.

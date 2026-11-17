@@ -1,6 +1,6 @@
 # Plan d'actions — EcoClock-rs Web
 
-Base : `rust-hardware-underclocking-utility4.zip` (17/11/2026, 54 fichiers). Ce document est le point d'entrée : état vérifié, décisions prises, pièges connus, et travail restant. L'historique détaillé des patches est dans git, pas ici.
+Base : `rust-hardware-underclocking-utility4.zip` (17/11/2026, 54 fichiers). Ce document est le point d'entrée : état vérifié, décisions prises, pièges connus, et travail restant. L'historique détaillé des patches est dans git, pas ici. Feuille de route publique : [ROADMAP.md](ROADMAP.md).
 
 **État vérifié au 17/11/2026 — commit `d04ea13` :**
 
