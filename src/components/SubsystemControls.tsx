@@ -75,6 +75,10 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
   const markerMhz = 3300;
   const freqSpan = Math.max(1, hardware.cpuFreqMaxMhz - hardware.cpuFreqMinMhz);
   const markerRatio = Math.min(1, Math.max(0, (markerMhz - hardware.cpuFreqMinMhz) / freqSpan));
+  // Le sweet-spot doit tomber a sa vraie place sur l'echelle, pas au milieu du flex :
+  // avec trois libelles de largeurs inegales, justify-between le tirait a gauche.
+  const sweetMhz = Math.round(hardware.cpuBaseMhz * 0.92);
+  const sweetRatio = Math.min(1, Math.max(0, (sweetMhz - hardware.cpuFreqMinMhz) / freqSpan));
   const isAdmin = privilege === "admin";
 
   const renderAdminGate = (needsAdmin: boolean) => {
@@ -272,10 +276,15 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
                       aria-valuetext={`${config.cpuFreqCapMhz} mégahertz`}
                     />
                   </div>
-                  <div className="flex justify-between text-[10px] font-mono text-slate-500 mt-1">
-                    <span>{hardware.cpuFreqMinMhz} MHz (LFM)</span>
-                    <span className="text-emerald-400/80">{Math.round(hardware.cpuBaseMhz * 0.92)} MHz (Sweet-spot)</span>
-                    <span>{hardware.cpuFreqMaxMhz} MHz (Turbo)</span>
+                  <div className="relative mt-1 h-4 text-[10px] font-mono text-slate-500">
+                    <span className="absolute left-0">{hardware.cpuFreqMinMhz} MHz (LFM)</span>
+                    <span
+                      className="absolute -translate-x-1/2 whitespace-nowrap text-emerald-400/80"
+                      style={{ left: `calc(7px + (100% - 15px) * ${sweetRatio})` }}
+                    >
+                      {sweetMhz} MHz (Sweet-spot)
+                    </span>
+                    <span className="absolute right-0">{hardware.cpuFreqMaxMhz} MHz (Turbo)</span>
                   </div>
                   {isAmd ? (
                     <p className="mt-1 text-[10px] leading-snug text-amber-300/80">
