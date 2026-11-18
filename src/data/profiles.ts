@@ -1,4 +1,5 @@
 import { AutostartConfig, HardwareConfig, Profile, WorkloadMode } from "../types/hardware";
+import type { Locale } from "../i18n";
 
 /**
  * Configuration nominale d'origine d'un PC Windows standard avant optimisation
@@ -293,18 +294,18 @@ const PROFILE_EN: Record<number, { name: string; description: string }> = {
 /** Un profil renommé par l'utilisateur garde son nom dans les deux langues. */
 export function profileDisplayName(
   profile: Pick<Profile, "id" | "name">,
-  locale: "fr" | "en"
+  locale: Locale
 ): string {
-  if (locale !== "en") return profile.name;
+  if (locale === "fr") return profile.name;
   const isDefault = DEFAULT_PROFILES.some((p) => p.id === profile.id && p.name === profile.name);
   return isDefault ? (PROFILE_EN[profile.id]?.name ?? profile.name) : profile.name;
 }
 
 export function profileDisplayDescription(
   profile: Pick<Profile, "id" | "name" | "description">,
-  locale: "fr" | "en"
+  locale: Locale
 ): string {
-  if (locale !== "en") return profile.description;
+  if (locale === "fr") return profile.description;
   const isDefault = DEFAULT_PROFILES.some((p) => p.id === profile.id && p.name === profile.name);
   return isDefault ? (PROFILE_EN[profile.id]?.description ?? profile.description) : profile.description;
 }

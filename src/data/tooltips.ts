@@ -1,6 +1,6 @@
 import { TooltipDoc } from "../types/hardware";
 
-export const TOOLTIPS: Record<string, TooltipDoc> = {
+export const TOOLTIPS = {
   // === PRIVILÈGES, AUTOSTART & SÉCURITÉ ===
   privilege_mode: {
     key: "privilege_mode",
@@ -632,4 +632,4 @@ export const TOOLTIPS: Record<string, TooltipDoc> = {
     safetyNote:
       "Stabilité : une cible doit être confirmée deux cycles de suite, et un délai minimal sépare deux bascules. Une configuration non sauvegardée n'est jamais remplacée automatiquement.",
   },
-};
+} satisfies Record<string, TooltipDoc>;

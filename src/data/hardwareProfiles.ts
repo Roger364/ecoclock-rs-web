@@ -1,4 +1,5 @@
 import { HardwareProfile } from "../types/hardware";
+import type { Locale } from "../i18n";
 
 /**
  * Profils matériels de référence utilisés par le modèle physique et les bornes de validation.
@@ -133,12 +134,12 @@ const HARDWARE_EN: Record<string, { label: string; note: string }> = {
   },
 };
 
-export function hardwareDisplayLabel(profile: HardwareProfile, locale: "fr" | "en"): string {
-  return locale === "en" ? (HARDWARE_EN[profile.id]?.label ?? profile.label) : profile.label;
+export function hardwareDisplayLabel(profile: HardwareProfile, locale: Locale): string {
+  return locale !== "fr" ? (HARDWARE_EN[profile.id]?.label ?? profile.label) : profile.label;
 }
 
-export function hardwareDisplayNote(profile: HardwareProfile, locale: "fr" | "en"): string {
-  return locale === "en" ? (HARDWARE_EN[profile.id]?.note ?? profile.note) : profile.note;
+export function hardwareDisplayNote(profile: HardwareProfile, locale: Locale): string {
+  return locale !== "fr" ? (HARDWARE_EN[profile.id]?.note ?? profile.note) : profile.note;
 }
 
 export function getHardwareProfile(id: string): HardwareProfile {

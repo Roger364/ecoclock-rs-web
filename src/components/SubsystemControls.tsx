@@ -1066,7 +1066,7 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
                     extraBeforeAfter={`${b.beforeMs} ms → ${b.afterMs} ms (${b.deltaMs >= 0 ? "+" : ""}${b.deltaMs} ms)`}
                     className="min-w-0"
                   >
-                    <span className="text-slate-300 truncate">{locale === "en" ? b.nameEn : b.name}</span>
+                    <span className="text-slate-300 truncate">{locale !== "fr" ? b.nameEn : b.name}</span>
                   </TechTooltip>
                   <div className="flex items-center gap-2 font-mono text-[10.5px] shrink-0 tabular-nums">
                     <span className="text-slate-500">{b.beforeMs.toFixed(1)}</span>
@@ -1115,7 +1115,7 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="text-[11.5px] font-semibold text-slate-100 leading-snug">
-                      {locale === "en" ? p.titleEn : p.title}
+                      {locale !== "fr" ? p.titleEn : p.title}
                     </div>
                     <button
                       type="button"
@@ -1127,7 +1127,7 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
                     </button>
                   </div>
                   <p className="text-[10.5px] text-slate-400 line-clamp-2">
-                    {locale === "en" ? p.whyTechnicalEn : p.whyTechnical}
+                    {locale !== "fr" ? p.whyTechnicalEn : p.whyTechnical}
                   </p>
                   <div className="flex flex-wrap items-center gap-2 font-mono text-[10px]">
                     <span className="text-emerald-300 bg-emerald-500/10 px-1.5 py-0.5 rounded">

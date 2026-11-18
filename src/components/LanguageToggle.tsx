@@ -7,7 +7,15 @@ export const LanguageToggle: React.FC = () => {
   const options: { id: Locale; label: string }[] = [
     { id: "fr", label: "FR" },
     { id: "en", label: "EN" },
+    { id: "it", label: "IT" },
+    { id: "de", label: "DE" },
   ];
+  const languageName: Record<Locale, string> = {
+    fr: "Français",
+    en: "English",
+    it: "Italiano",
+    de: "Deutsch",
+  };
 
   return (
     <div
@@ -15,8 +23,8 @@ export const LanguageToggle: React.FC = () => {
       role="group"
       aria-label={t("Langue de l'interface", "Interface language")}
       title={t(
-        "Basculer l'interface entre français et anglais (les vues d'analyse restent en français)",
-        "Switch the interface between French and English (analysis views remain in French)"
+        "Choisir la langue : français, anglais, italien ou allemand",
+        "Choose the language: French, English, Italian or German"
       )}
     >
       <Languages className="w-3.5 h-3.5 text-slate-400 ml-0.5" aria-hidden="true" />
@@ -27,6 +35,8 @@ export const LanguageToggle: React.FC = () => {
             key={option.id}
             type="button"
             aria-pressed={active}
+            aria-label={languageName[option.id]}
+            title={languageName[option.id]}
             onClick={() => setLocale(option.id)}
             className={`px-1.5 py-0.5 rounded text-[10.5px] font-semibold transition-colors cursor-pointer ${
               active ? "bg-slate-600 text-white" : "text-slate-400 hover:text-slate-200"

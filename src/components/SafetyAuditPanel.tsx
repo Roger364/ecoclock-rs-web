@@ -198,9 +198,9 @@ export const SafetyAuditPanel: React.FC<SafetyAuditPanelProps> = ({
                       ) : (
                         <ChevronRight className="w-3 h-3 text-slate-500 shrink-0" />
                       )}
-                      <span className="truncate">{locale === "en" ? issue.titleEn : issue.title}</span>
+                      <span className="truncate">{locale !== "fr" ? issue.titleEn : issue.title}</span>
                       <span className="hidden md:inline text-[10px] text-slate-500 shrink-0">
-                        · {locale === "en" ? SUBSYSTEM_EN[issue.subsystem] ?? issue.subsystem : issue.subsystem}
+                        · {locale !== "fr" ? SUBSYSTEM_EN[issue.subsystem] ?? issue.subsystem : issue.subsystem}
                       </span>
                     </button>
                     {issue.fix ? (
@@ -209,7 +209,7 @@ export const SafetyAuditPanel: React.FC<SafetyAuditPanelProps> = ({
                         onClick={() => onFix(issue)}
                         className="px-2 py-0.5 rounded bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/35 text-emerald-300 text-[10px] font-medium shrink-0 transition-colors cursor-pointer"
                       >
-                        {locale === "en"
+                        {locale !== "fr"
                           ? issue.fixLabelEn ?? t("Corriger", "Fix")
                           : issue.fixLabel ?? t("Corriger", "Fix")}
                       </button>
@@ -219,7 +219,7 @@ export const SafetyAuditPanel: React.FC<SafetyAuditPanelProps> = ({
                         onClick={onRequestAdmin}
                         className="px-2 py-0.5 rounded bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/35 text-amber-300 text-[10px] font-medium shrink-0 cursor-pointer"
                       >
-                        {locale === "en" ? issue.fixLabelEn ?? "UAC" : issue.fixLabel ?? "UAC"}
+                        {locale !== "fr" ? issue.fixLabelEn ?? "UAC" : issue.fixLabel ?? "UAC"}
                       </button>
                     ) : null}
                   </div>
@@ -228,10 +228,10 @@ export const SafetyAuditPanel: React.FC<SafetyAuditPanelProps> = ({
                       id={`issue-${issue.id}`}
                       className="px-3 pb-2 pt-0.5 text-[10.5px] text-slate-400 space-y-1 border-t border-slate-800/70"
                     >
-                      <p className="text-slate-300">{locale === "en" ? issue.detailEn : issue.detail}</p>
+                      <p className="text-slate-300">{locale !== "fr" ? issue.detailEn : issue.detail}</p>
                       <p>
                         <strong className="text-slate-400">{t("Conséquence :", "Impact:")}</strong>{" "}
-                        {locale === "en" ? issue.consequenceEn : issue.consequence}
+                        {locale !== "fr" ? issue.consequenceEn : issue.consequence}
                       </p>
                     </div>
                   )}

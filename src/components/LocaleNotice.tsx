@@ -6,9 +6,23 @@ import { useLocale } from "../i18n";
  * En mode anglais, les vues d'analyse pas encore traduites l'annoncent au lieu de
  * mélanger deux langues sans prévenir.
  */
+export const LocaleFallbackNotice: React.FC = () => {
+  const { locale } = useLocale();
+  if (locale !== "it" && locale !== "de") return null;
+  const message =
+    locale === "it"
+      ? "L'interfaccia italiana non è ancora disponibile: l'inglese è mostrato, testi tecnici compresi."
+      : "Die deutsche Oberfläche ist noch nicht verfügbar: Englisch wird angezeigt, technische Texte eingeschlossen.";
+  return (
+    <div className="rounded-lg border border-sky-500/30 bg-sky-500/10 px-3.5 py-2 text-[11px] text-sky-100">
+      {message}
+    </div>
+  );
+};
+
 export const LocaleNotice: React.FC = () => {
   const { locale, t } = useLocale();
-  if (locale !== "en") return null;
+  if (locale === "fr") return null;
   const message = t(
     "Cette vue d'analyse est encore en français. Les réglages, les profils et les dialogues sont traduits.",
     "This analysis view is still in French. Settings, profiles and dialogs are translated."

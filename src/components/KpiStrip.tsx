@@ -136,7 +136,7 @@ export const KpiStrip: React.FC<KpiStripProps> = ({ beforeTel, afterTel, benchma
                 : "bg-amber-500/15 text-amber-300"
             }`}
           >
-            {locale === "en" ? jsonBench.humanVerdictEn : jsonBench.humanVerdict}
+            {locale !== "fr" ? jsonBench.humanVerdictEn : jsonBench.humanVerdict}
           </span>
         </div>
         <div className="mt-1.5 flex items-baseline gap-2 font-mono tabular-nums">

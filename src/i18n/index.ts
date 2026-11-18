@@ -1,12 +1,15 @@
 import { useCallback, useSyncExternalStore } from "react";
 
-export type Locale = "fr" | "en";
+export type Locale = "fr" | "en" | "it" | "de";
+
+export const LOCALES: Locale[] = ["fr", "en", "it", "de"];
 
 const STORAGE_KEY = "ecoclock_rs_locale_v1";
 
 function readStoredLocale(): Locale {
   try {
-    return localStorage.getItem(STORAGE_KEY) === "en" ? "en" : "fr";
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored === "en" || stored === "it" || stored === "de" ? stored : "fr";
   } catch {
     return "fr";
   }
@@ -38,8 +41,11 @@ export function setLocale(next: Locale): void {
 }
 
 /** Traduction pure, utilisable hors React (moteur, exports). */
-export function pick(locale: Locale, fr: string, en: string): string {
-  return locale === "en" ? en : fr;
+export function pick(locale: Locale, fr: string, en: string, it?: string, de?: string): string {
+  if (locale === "fr") return fr;
+  if (locale === "it") return it ?? en;
+  if (locale === "de") return de ?? en;
+  return en;
 }
 
 function subscribe(listener: () => void): () => void {
@@ -51,10 +57,13 @@ function subscribe(listener: () => void): () => void {
 
 export function useLocale(): {
   locale: Locale;
-  t: (fr: string, en: string) => string;
+  t: (fr: string, en: string, it?: string, de?: string) => string;
   setLocale: (next: Locale) => void;
 } {
   const locale = useSyncExternalStore(subscribe, getLocale, () => "fr" as Locale);
-  const t = useCallback((fr: string, en: string) => pick(locale, fr, en), [locale]);
+  const t = useCallback(
+    (fr: string, en: string, it?: string, de?: string) => pick(locale, fr, en, it, de),
+    [locale]
+  );
   return { locale, t, setLocale };
 }

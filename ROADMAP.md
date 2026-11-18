@@ -45,7 +45,7 @@ Le `.ps1` n'est pas un asset de release : il est généré par l'application pou
 | # | Action | Pourquoi |
 |---|---|---|
 | 11 | Détecter le vendor CPU (Intel/AMD) ✅ détection + campagne CPPC2 | `PROCFREQMAX` est Intel-first ; côté AMD c'est CPPC2 qui compte. Mesure sur 5900X : EPP sans effet, plafond à un cran, Turbo -30 %. L'adaptation AMD n'a donc rien de mesuré à proposer de plus que l'existant |
-| 12 | Interface FR/EN ✅ v2 (18/11/2026) | le dépôt est public, l'interface est francophone ; tableau de bord complet (réglages, profils, dialogues, audit, propositions, benchmarks) bilingue, infobulles et vues d'analyse encore FR et annoncées |
+| 12 | Interface multilingue ✅ v3 (18/11/2026) | le dépôt est public, le français reste par défaut ; FR/EN complets, infobulles comprises, sélecteur IT/DE (repli anglais annoncé), vues d'analyse encore FR et annoncées |
 
 ## Phase 6 — Auditabilité (vague 11)
 

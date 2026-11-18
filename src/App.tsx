@@ -82,7 +82,7 @@ import { AutostartModal } from "./components/AutostartModal";
 import { HardwareModal } from "./components/HardwareModal";
 import { ShortcutsModal, ToastStack } from "./components/Feedback";
 import { LanguageToggle } from "./components/LanguageToggle";
-import { LocaleNotice } from "./components/LocaleNotice";
+import { LocaleFallbackNotice, LocaleNotice } from "./components/LocaleNotice";
 import { getLocale, useLocale } from "./i18n";
 
 const STORAGE_KEY_PROFILES = "ecoclock_rs_profiles_v1";
@@ -762,7 +762,7 @@ export function App() {
     pushToast(
       "success",
       t("Constat corrigé", "Issue fixed"),
-      locale === "en" ? issue.fixLabelEn ?? issue.titleEn : issue.fixLabel ?? issue.title,
+      locale !== "fr" ? issue.fixLabelEn ?? issue.titleEn : issue.fixLabel ?? issue.title,
       true
     );
     appendLog("Audit", `FixIssue("${issue.id}")`, undefined, 140);
@@ -1213,7 +1213,7 @@ export function App() {
                       aria-pressed={active}
                       onClick={() => setWorkload(wm)}
                       title={
-                        locale === "en"
+                        locale !== "fr"
                           ? WORKLOAD_META[wm].descriptionEn
                           : WORKLOAD_META[wm].description
                       }
@@ -1221,7 +1221,7 @@ export function App() {
                         active ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"
                       }`}
                     >
-                      {locale === "en"
+                      {locale !== "fr"
                         ? WORKLOAD_META[wm].shortLabelEn
                         : WORKLOAD_META[wm].shortLabel}
                     </button>
@@ -1239,6 +1239,9 @@ export function App() {
 
         {/* 5. VUE ACTIVE */}
         <main id="main-content" tabIndex={-1} className="p-4 flex-1 outline-none">
+          <div className="mb-3 empty:hidden">
+            <LocaleFallbackNotice />
+          </div>
           {activeTab === "dashboard" && (
             <div className="space-y-4">
               {issueCounts.critical > 0 && (
