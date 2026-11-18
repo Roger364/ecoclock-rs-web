@@ -77,7 +77,16 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
   const markerRatio = Math.min(1, Math.max(0, (markerMhz - hardware.cpuFreqMinMhz) / freqSpan));
   // Le sweet-spot doit tomber a sa vraie place sur l'echelle, pas au milieu du flex :
   // avec trois libelles de largeurs inegales, justify-between le tirait a gauche.
-  const sweetMhz = Math.round(hardware.cpuBaseMhz * 0.92);
+  // Le curseur avance par pas de 100 MHz : un sweet-spot a 3128 ne tombe sur aucun
+  // cran, et le libelle parait decale du pouce. On l'arrondit au cran atteignable.
+  const rawSweetMhz = Math.round(hardware.cpuBaseMhz * 0.92);
+  const sweetMhz = Math.min(
+    hardware.cpuFreqMaxMhz,
+    Math.max(
+      hardware.cpuFreqMinMhz,
+      hardware.cpuFreqMinMhz + Math.round((rawSweetMhz - hardware.cpuFreqMinMhz) / 100) * 100,
+    ),
+  );
   const sweetRatio = Math.min(1, Math.max(0, (sweetMhz - hardware.cpuFreqMinMhz) / freqSpan));
   const isAdmin = privilege === "admin";
 
