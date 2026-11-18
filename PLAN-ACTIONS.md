@@ -206,8 +206,9 @@ Détection retenue : le **code retour de l'écriture**. Rust le consigne dans `A
 
 1. **Bascule persistante.** `ecoclock_rs_locale_v1` dans `localStorage`, `document.documentElement.lang` mis à jour, défaut français. Le sélecteur FR/EN vit dans la barre de titre.
 2. **Traduit :** coquille (titre, navigation, pied de page), 5 profils (noms et descriptions d'usine, un profil renommé garde son nom), scénarios de charge, libellés matériel, tous les réglages et leurs notes, dialogues UAC / démarrage / matériel, raccourcis, notifications, barrière d'erreur.
-3. **Reste en français, annoncé :** constats d'audit et correctifs, propositions Pareto et leurs explications, noms de benchmarks, infobulles techniques, onglets Avant/Après, Mode intelligent, Audit et 5 Profils. En mode anglais, un bandeau explicite le dit au lieu de mélanger les langues en silence.
-4. **Pas de dictionnaire central.** Les paires FR/EN vivent au point d'affichage (`t(fr, en)`), les données localisées à côté de leur source (`descriptionEn`, `shortLabelEn`, `hardwareDisplayLabel`). Aucune clé abstraite à désynchroniser, et le français reste la source de vérité du projet.
+3. **Diagnostics moteur bilingues (suite).** Les 19 constats d'audit portent `titleEn`/`detailEn`/`consequenceEn`/`fixLabelEn`, les 9 propositions Pareto `titleEn`/`whyTechnicalEn`, les benchmarks `nameEn`/`humanVerdictEn`. Le tableau de bord est donc entièrement anglais, sans bandeau.
+4. **Reste en français, annoncé :** infobulles techniques (documentation longue) et onglets Avant/Après, Mode intelligent, Audit et 5 Profils. Ces vues affichent un bandeau en mode anglais ; chaque infobulle le dit aussi.
+5. **Pas de dictionnaire central.** Les paires FR/EN vivent au point d'affichage (`t(fr, en)`), les données localisées à côté de leur source (`descriptionEn`, `shortLabelEn`, `hardwareDisplayLabel`, `titleEn`, `nameEn`). Aucune clé abstraite à désynchroniser, et le français reste la source de vérité du projet. Le compilateur force la couverture : les champs `*En` d'audit et de proposition sont obligatoires.
 
 ---
 

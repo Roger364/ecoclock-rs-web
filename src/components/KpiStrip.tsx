@@ -11,7 +11,7 @@ interface KpiStripProps {
 }
 
 export const KpiStrip: React.FC<KpiStripProps> = ({ beforeTel, afterTel, benchmarks }) => {
-  const { t } = useLocale();
+  const { locale, t } = useLocale();
   const wattsDelta = afterTel.totalSystemWatts - beforeTel.totalSystemWatts;
   const wattsPct =
     beforeTel.totalSystemWatts > 0 ? Math.round((wattsDelta / beforeTel.totalSystemWatts) * 100) : 0;
@@ -20,11 +20,7 @@ export const KpiStrip: React.FC<KpiStripProps> = ({ beforeTel, afterTel, benchma
   const noiseDelta = afterTel.systemNoiseDba - beforeTel.systemNoiseDba;
   const jsonBench = benchmarks[0];
   const gpuBench = benchmarks[3];
-  const VERDICT_EN: Record<string, string> = {
-    Imperceptible: "Imperceptible",
-    "Très léger": "Very slight",
-    "Perceptible mais fluide": "Perceptible but smooth",
-  };
+
 
   return (
     <div className="px-4 pt-3.5 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2.5">
@@ -140,7 +136,7 @@ export const KpiStrip: React.FC<KpiStripProps> = ({ beforeTel, afterTel, benchma
                 : "bg-amber-500/15 text-amber-300"
             }`}
           >
-            {t(jsonBench.humanVerdict, VERDICT_EN[jsonBench.humanVerdict] ?? jsonBench.humanVerdict)}
+            {locale === "en" ? jsonBench.humanVerdictEn : jsonBench.humanVerdict}
           </span>
         </div>
         <div className="mt-1.5 flex items-baseline gap-2 font-mono tabular-nums">

@@ -159,7 +159,19 @@ describe("audit de sûreté (sur données brutes)", () => {
   it("le score vaut 100 sans constat et baisse avec la gravité", () => {
     expect(auditScore([])).toBe(100);
     expect(
-      auditScore([{ id: "x", severity: "critical", subsystem: "", title: "", detail: "", consequence: "" }])
+      auditScore([
+        {
+          id: "x",
+          severity: "critical",
+          subsystem: "",
+          title: "",
+          titleEn: "",
+          detail: "",
+          detailEn: "",
+          consequence: "",
+          consequenceEn: "",
+        },
+      ])
     ).toBe(80);
   });
 });

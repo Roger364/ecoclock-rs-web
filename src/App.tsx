@@ -431,7 +431,7 @@ export function App() {
         t("Sauvegarde bloquée par l'audit de sûreté", "Save blocked by the safety audit"),
         t(
           `${blocking.length} anomalie(s) critique(s) : ${blocking[0].title}.`,
-          `${blocking.length} critical issue(s): ${blocking[0].title}.`
+          `${blocking.length} critical issue(s): ${blocking[0].titleEn}.`
         )
       );
       return;
@@ -694,7 +694,7 @@ export function App() {
   };
 
   const handleApplyProposal = (p: OptimizationProposal) => {
-    history.record(t(`Optimisation « ${p.title.slice(0, 36)}… »`, `Optimization “${p.title.slice(0, 36)}…”`), workingConfig);
+    history.record(t(`Optimisation « ${p.title.slice(0, 36)}… »`, `Optimization “${p.titleEn.slice(0, 36)}…”`), workingConfig);
     setWorkingConfig((prev) => clampConfigToProfile({ ...prev, ...p.patch }, hardware));
     pushToast(
       "success",
@@ -762,7 +762,7 @@ export function App() {
     pushToast(
       "success",
       t("Constat corrigé", "Issue fixed"),
-      issue.fixLabel ?? issue.title,
+      locale === "en" ? issue.fixLabelEn ?? issue.titleEn : issue.fixLabel ?? issue.title,
       true
     );
     appendLog("Audit", `FixIssue("${issue.id}")`, undefined, 140);
@@ -1241,7 +1241,6 @@ export function App() {
         <main id="main-content" tabIndex={-1} className="p-4 flex-1 outline-none">
           {activeTab === "dashboard" && (
             <div className="space-y-4">
-              <LocaleNotice scope="engine" />
               {issueCounts.critical > 0 && (
                 <div className="rounded-lg bg-rose-500/12 border border-rose-500/35 px-3.5 py-2 flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2 text-xs text-rose-100">

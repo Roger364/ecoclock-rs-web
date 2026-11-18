@@ -13,6 +13,7 @@ import { clampConfigToProfile } from "./validation";
 interface CandidateRule {
   id: string;
   title: string | ((profile: HardwareProfile) => string);
+  titleEn: string | ((profile: HardwareProfile) => string);
   subsystem: OptimizationProposal["subsystem"];
   requiresAdmin: boolean | ((goal: OptimizerGoal) => boolean);
   tooltipKey: string;
@@ -23,6 +24,7 @@ interface CandidateRule {
   currentSummary: (cfg: HardwareConfig, profile: HardwareProfile) => string;
   proposedSummary: (nextCfg: HardwareConfig, profile: HardwareProfile) => string;
   whyTechnical: (cfg: HardwareConfig, nextCfg: HardwareConfig, goal: OptimizerGoal, profile: HardwareProfile) => string;
+  whyTechnicalEn: (cfg: HardwareConfig, nextCfg: HardwareConfig, goal: OptimizerGoal, profile: HardwareProfile) => string;
   physicsLaw: string;
   realWorldEffect: string;
 }
@@ -126,6 +128,7 @@ const RULES: CandidateRule[] = [
   {
     id: "cpu_vf_sweetspot",
     title: "Couper la surtension Turbo Boost & plafonner la fréquence CPU au coude V/F",
+    titleEn: "Cut Turbo Boost overvoltage & cap CPU frequency at the V/F knee",
     subsystem: "CPU",
     requiresAdmin: false,
     tooltipKey: "cpu_freq_cap",
@@ -152,6 +155,8 @@ const RULES: CandidateRule[] = [
       `${n.cpuFreqCapMhz} MHz · Turbo ${n.cpuTurboMode} · EPP ${n.cpuEpp}% · Min ${n.cpuMinPercent}%`,
     whyTechnical: (c, n) =>
       `Au-delà du coude V/F, les transistors exigent une hausse disproportionnée de la tension VID (jusqu'à ~1,38 V à ${c.cpuFreqCapMhz} MHz) pour ne gagner que les derniers pourcents de fréquence. En plafonnant à ${n.cpuFreqCapMhz} MHz avec EPP ${n.cpuEpp}%, le processeur opère dans sa zone de rendement instructions/joule maximal et supprime les pics thermiques qui emballent le ventilateur.`,
+    whyTechnicalEn: (c, n) =>
+      `Beyond the V/F knee, transistors need a disproportionate VID increase (up to ~1.38 V at ${c.cpuFreqCapMhz} MHz) for the last percent of frequency. Capping at ${n.cpuFreqCapMhz} MHz with EPP ${n.cpuEpp}% keeps the CPU in its best instructions/joule zone and removes the heat spikes that spin up the fan.`,
     physicsLaw: "Loi CMOS P_dyn = α·C·V²·f : comme V croît avec f, P varie en f^2,8 → −30 % MHz ≈ −58 % Watts !",
     realWorldEffect:
       "Navigation, code, bureautique et vidéo 4K indiscernables (< 16 ms), disparition complète du « yo-yo » du ventilateur CPU.",
@@ -162,6 +167,10 @@ const RULES: CandidateRule[] = [
       hw.hasDedicatedGpu
         ? "Abaisser le rafraîchissement écran & la luminosité (débloque le repos VRAM GPU)"
         : "Optimiser la luminosité matérielle & le rafraîchissement du moniteur",
+    titleEn: (hw) =>
+      hw.hasDedicatedGpu
+        ? "Lower display refresh & brightness (unlocks GPU VRAM idle)"
+        : "Optimize hardware brightness & monitor refresh rate",
     subsystem: "Affichage",
     requiresAdmin: false,
     tooltipKey: "display_hz",
@@ -183,6 +192,10 @@ const RULES: CandidateRule[] = [
       hw.hasDedicatedGpu && c.displayRefreshHz >= 144
         ? `À ${c.displayRefreshHz} Hz, l'intervalle VBLANK est trop court pour recalibrer la GDDR6 : le pilote bloque la mémoire vidéo en état P0 (${hw.gpuVramMaxMhz} MHz) même sur un bureau statique, gaspillant ~14 W dans le GPU en plus du scaler ! Passer à ${n.displayRefreshHz} Hz fait plonger la VRAM à ${hw.gpuVramIdleMhz} MHz (P8) et réduit le rétroéclairage LED.`
         : `Le rétroéclairage LED représente ~75 % de la consommation d'un écran. Descendre à ${n.displayBrightnessPct} % (confort visuel sRGB intérieur) et ${n.displayRefreshHz} Hz économise directement des watts secteur sans aucun coût de calcul.`,
+    whyTechnicalEn: (c, n, _g, hw) =>
+      hw.hasDedicatedGpu && c.displayRefreshHz >= 144
+        ? `At ${c.displayRefreshHz} Hz the VBLANK interval is too short to recalibrate GDDR6: the driver pins video memory in P0 (${hw.gpuVramMaxMhz} MHz) even on a static desktop, wasting ~14 W in the GPU on top of the scaler! Moving to ${n.displayRefreshHz} Hz drops VRAM to ${hw.gpuVramIdleMhz} MHz (P8) and cuts the LED backlight.`
+        : `The LED backlight is ~75% of a monitor's consumption. Dropping to ${n.displayBrightnessPct}% (indoor sRGB comfort) and ${n.displayRefreshHz} Hz saves wall watts with zero compute cost.`,
     physicsLaw: "Rétroéclairage LED linéaire + bande passante DisplayPort ∝ Hz (+ repos VRAM P8 sur GPU dédié).",
     realWorldEffect:
       "0,00 ms de ralentissement applicatif ; maintient aussi le GPU dédié sous 50 °C en 0 RPM passif.",
@@ -190,6 +203,7 @@ const RULES: CandidateRule[] = [
   {
     id: "gpu_power_sweetspot",
     title: "Écrêter le Power Limit GPU & verrouiller la crête MHz + VRAM P8 au repos",
+    titleEn: "Cap the GPU Power Limit & lock the MHz peak + VRAM P8 at idle",
     subsystem: "GPU",
     requiresAdmin: true,
     tooltipKey: "gpu_power_limit",
@@ -217,6 +231,8 @@ const RULES: CandidateRule[] = [
       `PL ${n.gpuPowerLimitPct}% (${Math.round((hw.gpuTdpW * n.gpuPowerLimitPct) / 100)} W) · Max ${n.gpuCoreClockCapMhz} MHz · VRAM ${n.gpuVramPolicy}`,
     whyTechnical: (_c, n, _g, hw) =>
       `${hw.gpuName} est poussé d'usine dans la partie plate de sa courbe de rendement : les derniers 30 % de Watts n'apportent que ~7 à 9 % d'images/s mais saturent le radiateur. Limiter le TDP via NVML à ${n.gpuPowerLimitPct} % (${Math.round((hw.gpuTdpW * n.gpuPowerLimitPct) / 100)} W, borné au VBIOS ≥ ${hw.gpuMinPowerPct} %) et l'horloge à ${n.gpuCoreClockCapMhz} MHz maintient Vgpu autour de 0,78–0,84 V.`,
+    whyTechnicalEn: (_c, n, _g, hw) =>
+      `${hw.gpuName} ships in the flat part of its efficiency curve: the last 30% of watts brings only ~7–9% more FPS but saturates the heatsink. Limiting TDP via NVML to ${n.gpuPowerLimitPct}% (${Math.round((hw.gpuTdpW * n.gpuPowerLimitPct) / 100)} W, VBIOS floor ≥ ${hw.gpuMinPowerPct}%) and the clock to ${n.gpuCoreClockCapMhz} MHz keeps Vgpu around 0.78–0.84 V.`,
     physicsLaw: "Rendement shader ∝ Perf / (V_gpu² · f) : jusqu'à +52 % d'images calculées par Watt consommé !",
     realWorldEffect:
       "Baisse de −12 à −22 °C sur le GPU/Hotspot et arrêt complet des ventilateurs (0 RPM) hors 3D lourde.",
@@ -224,6 +240,7 @@ const RULES: CandidateRule[] = [
   {
     id: "cstates_timer_ecoqos",
     title: "Débloquer les C-States profonds C8/C10, Timer Coalescing & EcoQoS",
+    titleEn: "Unlock deep C-States C8/C10, Timer Coalescing & EcoQoS",
     subsystem: "CPU",
     requiresAdmin: false,
     tooltipKey: "cpu_cstates",
@@ -246,6 +263,8 @@ const RULES: CandidateRule[] = [
     proposedSummary: (n) => `C8/C10 ON · Timer ${n.timerResolution} · EcoQoS + iGPU RC6 ON`,
     whyTechnical: () =>
       `Un timer forcé à 0,5 ms bombarde le noyau de 2 000 interruptions/s au lieu de 64/s, empêchant le power-gating C8/C10 des cœurs inactifs. En activant les C-States profonds, le regroupement de timer, iGPU RC6 et EcoQoS, les processus de fond restent confinés à basse tension et le CPU coupe son rail entre deux frappes clavier.`,
+    whyTechnicalEn: () =>
+      `A timer forced to 0.5 ms bombards the kernel with 2,000 interrupts/s instead of 64/s, preventing C8/C10 power-gating of idle cores. With deep C-States, timer coalescing, iGPU RC6 and EcoQoS, background work stays confined at low voltage and the CPU cuts its rail between keystrokes.`,
     physicsLaw: "Power-gating transistor C8 : tension cœur → ~0 V pendant > 85 % du temps en bureautique.",
     realWorldEffect:
       "Zéro ralentissement sur la fenêtre active au premier plan ; économie immédiate dès le repos.",
@@ -253,6 +272,7 @@ const RULES: CandidateRule[] = [
   {
     id: "pcie_aspm_unlock",
     title: "Activer PCIe ASPM L1 / L1.2 (éteint les lignes SerDes 16 GT/s inactives)",
+    titleEn: "Enable PCIe ASPM L1 / L1.2 (powers down idle 16 GT/s SerDes lanes)",
     subsystem: "PCIe",
     requiresAdmin: (g) => GOAL_TARGETS[g].aspm === "l1_substates",
     tooltipKey: "pcie_aspm",
@@ -270,6 +290,8 @@ const RULES: CandidateRule[] = [
       `PCIe ASPM : ${n.pcieAspm.toUpperCase()}${n.pcieAspm === "l1_substates" ? " (CLKREQ#)" : ""}`,
     whyTechnical: () =>
       `Double gain : un bus PCIe Gen4 bloqué en L0 dissipe inutilement ~6–8 W dans les transceivers SerDes et interdit physiquement au contrôleur racine du CPU d'entrer en Package C8. Activer L1/L1.2 rétrograde dynamiquement le lien au repos et libère les C-States du processeur.`,
+    whyTechnicalEn: () =>
+      `Double win: a PCIe Gen4 bus stuck in L0 needlessly dissipates ~6–8 W in the SerDes transceivers and physically blocks the CPU root complex from entering Package C8. Enabling L1/L1.2 dynamically downgrades the idle link and frees the CPU C-States.`,
     physicsLaw: "Coupure PLL SerDes + horloge 100 MHz CLKREQ# : lien PCIe au repos 7,5 W → < 0,05 W.",
     realWorldEffect:
       "Latence de réveil de 0,045 ms (45 µs) : totalement imperceptible, plein débit Gen4 restitué en charge.",
@@ -277,6 +299,7 @@ const RULES: CandidateRule[] = [
   {
     id: "storage_nvme_sata",
     title: "Activer la veille autonome SSD NVMe APST (PS3/PS4) & SATA DIPM Slumber",
+    titleEn: "Enable NVMe APST autonomous idle (PS3/PS4) & SATA DIPM Slumber",
     subsystem: "NVMe/SATA",
     requiresAdmin: true,
     tooltipKey: "nvme_apst",
@@ -295,6 +318,8 @@ const RULES: CandidateRule[] = [
     proposedSummary: (n) => `NVMe ${n.nvmeApst} (${n.nvmeIdleTimeoutMs} ms) · SATA ${n.sataAlpm}`,
     whyTechnical: (_c, n) =>
       `Sans APST, le contrôleur ARM multi-cœurs du SSD NVMe reste en PS0 (~5,5 W) même sans aucun accès disque, chauffant au-delà de 50 °C. Avec APST ${n.nvmeApst} après ${n.nvmeIdleTimeoutMs} ms de silence, le SSD descend à 5–50 mW et le PHY SATA entre en veille.`,
+    whyTechnicalEn: (_c, n) =>
+      `Without APST, the multi-core ARM controller of the NVMe SSD stays in PS0 (~5.5 W) with no disk access at all, heating above 50 °C. With APST ${n.nvmeApst} after ${n.nvmeIdleTimeoutMs} ms of silence, the SSD drops to 5–50 mW and the SATA PHY sleeps.`,
     physicsLaw: "Transition autonome PS0 (5 500 mW) → PS3 (50 mW) / PS4 (5 mW) : facteur ÷110 à ÷1000 !",
     realWorldEffect:
       "SSD refroidi de −15 à −20 °C (longévité accrue), +0,8 à +1,8 ms sur le seul 1er accès après pause.",
@@ -302,6 +327,7 @@ const RULES: CandidateRule[] = [
   {
     id: "cpu_pl1_parking",
     title: "Verrouiller l'enveloppe RAPL PL1 & activer le Core Parking intelligent",
+    titleEn: "Lock the RAPL PL1 envelope & enable smart Core Parking",
     subsystem: "CPU",
     requiresAdmin: true,
     tooltipKey: "cpu_pl1",
@@ -319,6 +345,8 @@ const RULES: CandidateRule[] = [
     proposedSummary: (n) => `PL1 ${n.cpuPl1Watts} W max · Cœurs actifs min ${n.cpuCoreParkingMinActive}%`,
     whyTechnical: (_c, n, _g, hw) =>
       `Garantie thermique absolue : même si une indexation ou une compilation sature les ${hw.cpuCores} cœurs, RAPL plafonne le package à ${n.cpuPl1Watts} W max. Au repos, le Core Parking regroupe les threads légers et coupe le rail C6 des cœurs inutilisés.`,
+    whyTechnicalEn: (_c, n, _g, hw) =>
+      `Absolute thermal guarantee: even if an indexing job or a build saturates all ${hw.cpuCores} cores, RAPL caps the package at ${n.cpuPl1Watts} W max. At idle, Core Parking groups light threads and cuts the C6 rail of unused cores.`,
     physicsLaw: "Régulation boucle fermée RAPL (1 ms) + coupure rail C6 des cœurs parqués (dé-parquage 0,35 ms).",
     realWorldEffect:
       "Silence garanti même lors des pics imprévus ; réveil instantané de tous les cœurs en cas de besoin.",
@@ -326,6 +354,7 @@ const RULES: CandidateRule[] = [
   {
     id: "usb_wifi_idle",
     title: "Activer la Suspension Sélective USB (U3) & la sobriété radio Wi-Fi (PSP)",
+    titleEn: "Enable USB selective suspend (U3) & Wi-Fi radio efficiency (PSP)",
     subsystem: "Réseau/OS",
     requiresAdmin: false,
     tooltipKey: "usb_suspend",
@@ -342,6 +371,8 @@ const RULES: CandidateRule[] = [
     proposedSummary: (n) => `USB Suspend ON (U3) · Wi-Fi ${n.wifiPowerMode}`,
     whyTechnical: () =>
       `Les ports USB inactifs (webcam, lecteur de carte, dongle au repos) et la radio Wi-Fi en écoute permanente CAM brûlent 4 à 6 W en continu et maintiennent du trafic DMA xHCI qui empêche le CPU d'entrer en C8 profond — le tout réglable en mode User sans UAC.`,
+    whyTechnicalEn: () =>
+      `Idle USB ports (webcam, card reader, idle dongle) and a Wi-Fi radio in permanent CAM listening burn 4 to 6 W continuously and keep xHCI DMA traffic that prevents deep C8 — all adjustable in User mode without UAC.`,
     physicsLaw: "État suspendu USB U3 (< 2,5 mA) + extinction chaîne RF 802.11 entre balises DTIM.",
     realWorldEffect:
       "Jusqu'à −5,5 W permanents sans couper clavier, souris ni débit de téléchargement actif.",
@@ -349,6 +380,7 @@ const RULES: CandidateRule[] = [
   {
     id: "nic_eee_802_3az",
     title: "Activer Ethernet Éco-Énergétique IEEE 802.3az (EEE Low-Power Idle)",
+    titleEn: "Enable IEEE 802.3az Energy-Efficient Ethernet (EEE Low-Power Idle)",
     subsystem: "Réseau/OS",
     requiresAdmin: true,
     tooltipKey: "nic_eee",
@@ -360,6 +392,8 @@ const RULES: CandidateRule[] = [
     proposedSummary: () => "Ethernet 802.3az EEE : ON (Low-Power Idle)",
     whyTechnical: () =>
       `Sans 802.3az, le transceiver cuivre RJ45 (1 / 2.5 GbE) émet des symboles IDLE à pleine puissance 100 % du temps sur les 4 paires torsadées même à 0 ko/s. En Low-Power Idle, l'émetteur dort entre deux paquets et ne consomme que ~0,75 W au lieu de ~3,15 W.`,
+    whyTechnicalEn: () =>
+      `Without 802.3az, the RJ45 copper transceiver (1 / 2.5 GbE) emits full-power IDLE symbols 100% of the time on all four twisted pairs even at 0 KB/s. In Low-Power Idle the transmitter sleeps between packets and draws only ~0.75 W instead of ~3.15 W.`,
     physicsLaw: "Mise en sommeil PHY IEEE 802.3az LPI : −2,4 W permanents pour +0,02 ms de réveil.",
     realWorldEffect:
       "Ratio de rendement exceptionnel (~120 W économisés par milliseconde), imperceptible même en jeu en ligne.",
@@ -423,6 +457,7 @@ export function generateOptimizationProposals(
     const requiresAdmin =
       typeof rule.requiresAdmin === "function" ? rule.requiresAdmin(goal) : rule.requiresAdmin;
     const title = typeof rule.title === "function" ? rule.title(profile) : rule.title;
+    const titleEn = typeof rule.titleEn === "function" ? rule.titleEn(profile) : rule.titleEn;
 
     const rawRatio = (savedWatts * 3.4 + noiseDropDba * 4.5 + tempDropC * 1.4) / (1 + latencyDeltaMs * 0.22);
     const efficiencyScore = Math.min(99, Math.max(42, Math.round(45 + Math.min(54, rawRatio * 1.45))));
@@ -430,12 +465,14 @@ export function generateOptimizationProposals(
     proposals.push({
       id: rule.id,
       title,
+      titleEn,
       subsystem: rule.subsystem,
       requiresAdmin,
       tooltipKey: rule.tooltipKey,
       currentSummary: rule.currentSummary(clampedCurrent, profile),
       proposedSummary: rule.proposedSummary(nextCfg, profile),
       whyTechnical: rule.whyTechnical(clampedCurrent, nextCfg, goal, profile),
+      whyTechnicalEn: rule.whyTechnicalEn(clampedCurrent, nextCfg, goal, profile),
       physicsLaw: rule.physicsLaw,
       realWorldEffect: rule.realWorldEffect,
       savedWatts,

@@ -610,6 +610,7 @@ export function computeBenchmarks(
     id: string,
     key: keyof typeof b,
     name: string,
+    nameEn: string,
     category: BenchmarkMetric["category"],
     tooltipKey: string,
     taskDescription: string,
@@ -619,9 +620,19 @@ export function computeBenchmarks(
     const afterMs = a[key];
     const deltaMs = Math.round((afterMs - beforeMs) * 100) / 100;
     const deltaPct = beforeMs > 0 ? Math.round(((afterMs - beforeMs) / beforeMs) * 1000) / 10 : 0;
+    const verdict = classifyVerdict(afterMs, deltaMs, humanThresholdMs);
+    const verdictEn =
+      verdict === "Imperceptible"
+        ? "Imperceptible"
+        : verdict === "Très léger"
+        ? "Very slight"
+        : verdict === "Perceptible mais fluide"
+        ? "Perceptible but smooth"
+        : "Clear slowdown";
     return {
       id,
       name,
+      nameEn,
       category,
       tooltipKey,
       taskDescription,
@@ -630,7 +641,8 @@ export function computeBenchmarks(
       deltaMs,
       deltaPct,
       humanThresholdMs,
-      humanVerdict: classifyVerdict(afterMs, deltaMs, humanThresholdMs),
+      humanVerdict: verdict,
+      humanVerdictEn: verdictEn,
     };
   };
 
@@ -641,6 +653,7 @@ export function computeBenchmarks(
       "json",
       "json",
       "Ouverture Page / Parsing JSON 5 Mo",
+      "Page load / 5 MB JSON parsing",
       "CPU",
       "bench_json",
       "Réactivité clic interface, onglet web, document bureautique (mono-cœur + EPP)",
@@ -650,6 +663,7 @@ export function computeBenchmarks(
       "lz4",
       "lz4",
       "Décompression LZ4 + BLAKE3 (64 Mo)",
+      "LZ4 decompression + BLAKE3 (64 MB)",
       "CPU",
       "bench_lz4",
       "Lancement d'application, extraction d'archive, chargement d'assets (CPU + L3/DRAM)",
@@ -659,6 +673,7 @@ export function computeBenchmarks(
       "sqlite",
       "sqlite",
       "Requête 50k lignes / Build incrémental",
+      "50k-row query / incremental build",
       "CPU",
       "bench_sqlite",
       "Recherche locale, filtre photo, recalcul tableur, compilation (multi-cœurs + PL1)",
@@ -668,6 +683,7 @@ export function computeBenchmarks(
       "gpu_frame",
       "gpu_frame",
       "Rendu d'une image GPU (Frame time)",
+      "GPU frame render (frame time)",
       "GPU",
       "bench_gpu_frame",
       `Scène 3D/Shader 1440p — budget fluide à ${afterCfg.displayRefreshHz} Hz = ${frameBudgetMs} ms/image`,
@@ -677,6 +693,7 @@ export function computeBenchmarks(
       "nvme_wake",
       "nvme_wake",
       "1ère lecture SSD 4 Ko après repos",
+      "First 4 KB SSD read after idle",
       "Stockage",
       "bench_nvme_wake",
       "Sortie de veille autonome NVMe APST (PS1/PS3/PS4) + lien PCIe (accès suivants : 0,06 ms)",
@@ -686,6 +703,7 @@ export function computeBenchmarks(
       "bus_net",
       "bus_net",
       "Réveil Bus PCIe + 1er paquet Réseau",
+      "PCIe bus wake + first network packet",
       "Bus / Réseau",
       "bench_bus_wake",
       "Sortie ASPM L1.2 + Ethernet 802.3az LPI + balise Wi-Fi PSP sur paquet interactif",

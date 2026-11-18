@@ -67,11 +67,16 @@ export interface ValidationIssue {
   id: string;
   severity: IssueSeverity;
   subsystem: string;
+  subsystemEn?: string;
   title: string;
+  titleEn: string;
   detail: string;
+  detailEn: string;
   consequence: string;
+  consequenceEn: string;
   fix?: Partial<HardwareConfig>;
   fixLabel?: string;
+  fixLabelEn?: string;
 }
 
 export interface BenchRun {
@@ -144,6 +149,7 @@ export interface AutostartConfig {
 export interface BenchmarkMetric {
   id: string;
   name: string;
+  nameEn: string;
   category: "CPU" | "GPU" | "Stockage" | "Bus / Réseau" | "Système";
   tooltipKey: string;
   taskDescription: string;
@@ -153,6 +159,7 @@ export interface BenchmarkMetric {
   deltaPct: number;
   humanThresholdMs: number;
   humanVerdict: "Imperceptible" | "Très léger" | "Perceptible mais fluide" | "Ralentissement net";
+  humanVerdictEn: "Imperceptible" | "Very slight" | "Perceptible but smooth" | "Clear slowdown";
 }
 
 export interface TelemetrySnapshot {
@@ -209,6 +216,8 @@ export interface TelemetrySnapshot {
 export interface OptimizationProposal {
   id: string;
   title: string;
+  titleEn: string;
+  whyTechnicalEn: string;
   subsystem: "CPU" | "GPU" | "PCIe" | "NVMe/SATA" | "Affichage" | "Réseau/OS";
   requiresAdmin: boolean;
   tooltipKey: string;

@@ -6,19 +6,13 @@ import { useLocale } from "../i18n";
  * En mode anglais, les vues d'analyse pas encore traduites l'annoncent au lieu de
  * mélanger deux langues sans prévenir.
  */
-export const LocaleNotice: React.FC<{ scope?: "view" | "engine" }> = ({ scope = "view" }) => {
+export const LocaleNotice: React.FC = () => {
   const { locale, t } = useLocale();
   if (locale !== "en") return null;
-  const message =
-    scope === "engine"
-      ? t(
-          "Les diagnostics générés par le moteur (constats d'audit, propositions, noms de benchmarks) restent en français.",
-          "Engine-generated diagnostics (audit findings, proposals, benchmark names) are still in French."
-        )
-      : t(
-          "Cette vue d'analyse est encore en français. Les réglages, les profils et les dialogues sont traduits.",
-          "This analysis view is still in French. Settings, profiles and dialogs are translated."
-        );
+  const message = t(
+    "Cette vue d'analyse est encore en français. Les réglages, les profils et les dialogues sont traduits.",
+    "This analysis view is still in French. Settings, profiles and dialogs are translated."
+  );
 
   return (
     <div
