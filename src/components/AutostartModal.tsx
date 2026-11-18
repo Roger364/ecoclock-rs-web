@@ -2,6 +2,8 @@ import React, { useRef } from "react";
 import { Lock, Power, ShieldCheck, Star, Terminal, X } from "lucide-react";
 import { AutostartConfig, PrivilegeLevel, Profile, ProfileSlotId } from "../types/hardware";
 import { useModalFocusTrap } from "../hooks/useModalFocusTrap";
+import { profileDisplayName } from "../data/profiles";
+import { useLocale } from "../i18n";
 
 interface AutostartModalProps {
   open: boolean;
@@ -22,6 +24,7 @@ export const AutostartModal: React.FC<AutostartModalProps> = ({
   onRequestAdmin,
   onClose,
 }) => {
+  const { locale, t } = useLocale();
   const dialogRef = useRef<HTMLDivElement>(null);
   useModalFocusTrap(open, dialogRef);
 
@@ -54,13 +57,13 @@ export const AutostartModal: React.FC<AutostartModalProps> = ({
           <div className="flex items-center gap-2">
             <Power className="w-4 h-4 text-emerald-400" />
             <h3 id="autostart-modal-title" className="text-sm font-semibold text-slate-100">
-              Démarrage avec Windows & Garde-fous de Sécurité
+              {t("Démarrage avec Windows & Garde-fous de Sécurité", "Windows startup & safety guards")}
             </h3>
           </div>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Fermer la configuration du démarrage automatique"
+            aria-label={t("Fermer la configuration du démarrage automatique", "Close the startup configuration")}
             className="text-slate-400 hover:text-white p-1 rounded cursor-pointer"
           >
             <X className="w-4 h-4" />
@@ -72,10 +75,13 @@ export const AutostartModal: React.FC<AutostartModalProps> = ({
           <label className="flex items-center justify-between p-3 rounded-lg bg-[#0F131A] border border-slate-800 cursor-pointer">
             <div>
               <div className="font-semibold text-slate-100">
-                Lancer EcoClock-rs à l'ouverture de session Windows
+                {t("Lancer EcoClock-rs à l'ouverture de session Windows", "Launch EcoClock-rs when you sign in to Windows")}
               </div>
               <div className="text-[11px] text-slate-400 mt-0.5">
-                Temps de démarrage : ~6,8 ms · Empreinte RAM en systray : 4,6 Mo
+                {t(
+                  "Temps de démarrage : ~6,8 ms · Empreinte RAM en systray : 4,6 Mo",
+                  "Startup time: ~6.8 ms · Tray RAM footprint: 4.6 MB"
+                )}
               </div>
             </div>
             <input
@@ -90,7 +96,10 @@ export const AutostartModal: React.FC<AutostartModalProps> = ({
           <div className="space-y-1.5">
             <label className="font-semibold text-slate-200 flex items-center gap-1.5">
               <Star className="w-3.5 h-3.5 text-amber-400" />
-              Profil appliqué automatiquement au démarrage (1 sur 5 retenus) :
+              {t(
+                "Profil appliqué automatiquement au démarrage (1 sur 5 retenus) :",
+                "Profile applied automatically at startup (1 of the 5 kept):"
+              )}
             </label>
             <div className="grid grid-cols-1 gap-1.5">
               {profiles.map((p) => {
@@ -108,7 +117,7 @@ export const AutostartModal: React.FC<AutostartModalProps> = ({
                   >
                     <span className="font-medium">
                       <span className="font-mono text-[11px] opacity-75 mr-2">P{p.id}</span>
-                      {p.name}
+                      {profileDisplayName(p, locale)}
                     </span>
                     <span className="text-[10.5px] font-mono px-1.5 py-0.5 rounded bg-slate-800/90 text-slate-300">
                       CPU {p.config.cpuFreqCapMhz} MHz · {p.config.displayRefreshHz} Hz
@@ -121,7 +130,7 @@ export const AutostartModal: React.FC<AutostartModalProps> = ({
 
           {/* Méthode d'intégration Windows */}
           <div className="space-y-1.5">
-            <div className="font-semibold text-slate-200">Méthode d'enregistrement Windows :</div>
+            <div className="font-semibold text-slate-200">{t("Méthode d'enregistrement Windows :", "Windows registration method:")}</div>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
@@ -132,9 +141,12 @@ export const AutostartModal: React.FC<AutostartModalProps> = ({
                     : "bg-[#0F131A] border-slate-800 hover:border-slate-700"
                 }`}
               >
-                <div className="font-semibold text-slate-100">Clé Registre HKCU (User)</div>
+                <div className="font-semibold text-slate-100">{t("Clé Registre HKCU (User)", "HKCU registry key (User)")}</div>
                 <div className="text-[10.5px] text-slate-400 mt-0.5">
-                  Zéro droit Admin requis. Applique CPU, Turbo, EPP, C-States, EcoQoS & Hz.
+                  {t(
+                    "Zéro droit Admin requis. Applique CPU, Turbo, EPP, C-States, EcoQoS & Hz.",
+                    "No Admin rights needed. Applies CPU, Turbo, EPP, C-States, EcoQoS & Hz."
+                  )}
                 </div>
               </button>
 
@@ -155,10 +167,13 @@ export const AutostartModal: React.FC<AutostartModalProps> = ({
               >
                 <div className="font-semibold text-slate-100 flex items-center gap-1">
                   {!isAdmin && <Lock className="w-3 h-3 text-amber-400" />}
-                  Tâche Planifiée (Admin)
+                  {t("Tâche Planifiée (Admin)", "Scheduled task (Admin)")}
                 </div>
                 <div className="text-[10.5px] text-slate-400 mt-0.5">
-                  RunLevel Highest : applique aussi GPU NVML & NVMe PS4 sans popup UAC au boot !
+                  {t(
+                    "RunLevel Highest : applique aussi GPU NVML & NVMe PS4 sans popup UAC au boot !",
+                    "RunLevel Highest: also applies GPU NVML & NVMe PS4 without a UAC prompt at boot!"
+                  )}
                 </div>
               </button>
             </div>
@@ -173,7 +188,7 @@ export const AutostartModal: React.FC<AutostartModalProps> = ({
                 onChange={(e) => onChange({ ...config, startMinimizedToTray: e.target.checked })}
                 className="accent-emerald-500"
               />
-              <span className="text-[11px] text-slate-300">Réduire en zone de notification (--tray)</span>
+              <span className="text-[11px] text-slate-300">{t("Réduire en zone de notification (--tray)", "Minimize to the notification area (--tray)")}</span>
             </label>
 
             <label className="flex items-center gap-2 p-2.5 rounded-lg bg-[#0F131A] border border-slate-800 cursor-pointer">
@@ -183,7 +198,7 @@ export const AutostartModal: React.FC<AutostartModalProps> = ({
                 onChange={(e) => onChange({ ...config, restoreOnShutdown: e.target.checked })}
                 className="accent-emerald-500"
               />
-              <span className="text-[11px] text-slate-300">RollbackGuard à l'arrêt / fermeture</span>
+              <span className="text-[11px] text-slate-300">{t("RollbackGuard à l'arrêt / fermeture", "RollbackGuard on shutdown / close")}</span>
             </label>
           </div>
 
@@ -191,7 +206,8 @@ export const AutostartModal: React.FC<AutostartModalProps> = ({
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
               <span className="text-[11px] text-slate-300">
-                Délai Safe-Boot anti-boucle : <strong className="font-mono text-white">{config.safeBootDelaySec} s</strong>
+                {t("Délai Safe-Boot anti-boucle :", "Anti-loop Safe-Boot delay:")}{" "}
+                <strong className="font-mono text-white">{config.safeBootDelaySec} s</strong>
               </span>
             </div>
             <input
@@ -209,10 +225,20 @@ export const AutostartModal: React.FC<AutostartModalProps> = ({
           <div className="rounded-lg bg-[#0B0E14] border border-slate-800 p-2.5">
             <div className="flex items-center gap-1.5 text-[10.5px] text-sky-400 mb-1">
               <Terminal className="w-3.5 h-3.5" />
-              <span>Entrée système exacte synchronisée par src/platform/autostart.rs :</span>
+              <span>
+                {t(
+                  "Entrée système exacte synchronisée par src/platform/autostart.rs :",
+                  "Exact system entry synchronized by src/platform/autostart.rs:"
+                )}
+              </span>
             </div>
             <code className="text-[10.5px] text-slate-300 break-all block leading-relaxed">
-              {config.enabled ? generatedCommand : "(Aucune entrée registre ni tâche planifiée — autostart désactivé)"}
+              {config.enabled
+                ? generatedCommand
+                : t(
+                    "(Aucune entrée registre ni tâche planifiée — autostart désactivé)",
+                    "(No registry entry and no scheduled task — autostart disabled)"
+                  )}
             </code>
           </div>
 
@@ -222,7 +248,7 @@ export const AutostartModal: React.FC<AutostartModalProps> = ({
               onClick={onClose}
               className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-colors cursor-pointer"
             >
-              Valider & Synchroniser
+              {t("Valider & Synchroniser", "Apply & Synchronize")}
             </button>
           </div>
         </div>

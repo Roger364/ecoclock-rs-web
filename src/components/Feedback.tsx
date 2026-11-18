@@ -9,6 +9,7 @@ import {
   X,
 } from "lucide-react";
 import { useModalFocusTrap } from "../hooks/useModalFocusTrap";
+import { useLocale } from "../i18n";
 
 export interface ToastData {
   id: string;
@@ -48,7 +49,9 @@ const TONE = {
   },
 };
 
-export const ToastStack: React.FC<ToastProps> = ({ toasts, onDismiss, onUndo }) => (
+export const ToastStack: React.FC<ToastProps> = ({ toasts, onDismiss, onUndo }) => {
+  const { t } = useLocale();
+  return (
   <div
     className="fixed bottom-3 right-3 z-[60] w-[min(360px,calc(100vw-24px))] space-y-2 pointer-events-none"
     aria-live="polite"
@@ -90,14 +93,14 @@ export const ToastStack: React.FC<ToastProps> = ({ toasts, onDismiss, onUndo }) 
                   }}
                   className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-600 text-[10px] text-slate-200 font-medium cursor-pointer"
                 >
-                  <RotateCcw className="w-2.5 h-2.5" /> Annuler (Ctrl+Z)
+                  <RotateCcw className="w-2.5 h-2.5" /> {t("Annuler (Ctrl+Z)", "Undo (Ctrl+Z)")}
                 </button>
               )}
             </div>
             <button
               type="button"
               onClick={() => onDismiss(toast.id)}
-              aria-label="Fermer la notification"
+              aria-label={t("Fermer la notification", "Dismiss notification")}
               className="text-slate-500 hover:text-slate-200 p-0.5 rounded shrink-0 cursor-pointer"
             >
               <X className="w-3 h-3" />
@@ -107,28 +110,70 @@ export const ToastStack: React.FC<ToastProps> = ({ toasts, onDismiss, onUndo }) 
       );
     })}
   </div>
-);
+  );
+};
 
 interface ShortcutsModalProps {
   open: boolean;
   onClose: () => void;
 }
 
-const SHORTCUTS: { keys: string; label: string }[] = [
-  { keys: "1 … 5", label: "Sélectionner le profil P1 à P5 (met l'auto en pause temporaire)" },
-  { keys: "Ctrl / ⌘ + S", label: "Sauvegarder la configuration dans le profil actif" },
-  { keys: "Ctrl / ⌘ + Z", label: "Annuler la dernière action (Undo)" },
-  { keys: "Ctrl / ⌘ + Y", label: "Rétablir l'action annulée (Redo)" },
-  { keys: "T", label: "Activer / désactiver toutes les infobulles techniques" },
-  { keys: "A", label: "Ouvrir le panneau Mode intelligent" },
-  { keys: "B", label: "Exécuter le micro-benchmark réel et recalibrer" },
-  { keys: "P", label: "Mettre en pause / reprendre la télémétrie 1 Hz" },
-  { keys: "M", label: "Changer de matériel de référence" },
-  { keys: "Échap", label: "Fermer une fenêtre, une infobulle épinglée ou ce panneau" },
-  { keys: "?", label: "Afficher / masquer cette aide clavier" },
+const SHORTCUTS: { keys: string; label: string; labelEn: string }[] = [
+  {
+    keys: "1 … 5",
+    label: "Sélectionner le profil P1 à P5 (met l'auto en pause temporaire)",
+    labelEn: "Select profile P1 to P5 (temporarily pauses smart mode)",
+  },
+  {
+    keys: "Ctrl / ⌘ + S",
+    label: "Sauvegarder la configuration dans le profil actif",
+    labelEn: "Save the configuration into the active profile",
+  },
+  {
+    keys: "Ctrl / ⌘ + Z",
+    label: "Annuler la dernière action (Undo)",
+    labelEn: "Undo the last action",
+  },
+  {
+    keys: "Ctrl / ⌘ + Y",
+    label: "Rétablir l'action annulée (Redo)",
+    labelEn: "Redo the undone action",
+  },
+  {
+    keys: "T",
+    label: "Activer / désactiver toutes les infobulles techniques",
+    labelEn: "Enable / disable all technical tooltips",
+  },
+  {
+    keys: "A",
+    label: "Ouvrir le panneau Mode intelligent",
+    labelEn: "Open the Smart mode panel",
+  },
+  {
+    keys: "B",
+    label: "Exécuter le micro-benchmark réel et recalibrer",
+    labelEn: "Run the real micro-benchmark and recalibrate",
+  },
+  {
+    keys: "P",
+    label: "Mettre en pause / reprendre la télémétrie 1 Hz",
+    labelEn: "Pause / resume 1 Hz telemetry",
+  },
+  { keys: "M", label: "Changer de matériel de référence", labelEn: "Change the reference hardware" },
+  {
+    keys: "Échap",
+    label: "Fermer une fenêtre, une infobulle épinglée ou ce panneau",
+    labelEn: "Close a window, a pinned tooltip or this panel",
+  },
+  {
+    keys: "?",
+    label: "Afficher / masquer cette aide clavier",
+    labelEn: "Show / hide this keyboard help",
+  },
 ];
 
 export const ShortcutsModal: React.FC<ShortcutsModalProps> = ({ open, onClose }) => {
+  const { t } = useLocale();
   const dialogRef = useRef<HTMLDivElement>(null);
   useModalFocusTrap(open, dialogRef);
 
@@ -152,13 +197,13 @@ export const ShortcutsModal: React.FC<ShortcutsModalProps> = ({ open, onClose })
           <div className="flex items-center gap-2">
             <Keyboard className="w-4 h-4 text-sky-400" />
             <h2 id="shortcuts-title" className="text-sm font-semibold text-slate-100">
-              Raccourcis clavier
+              {t("Raccourcis clavier", "Keyboard shortcuts")}
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Fermer l'aide clavier"
+            aria-label={t("Fermer l'aide clavier", "Close keyboard help")}
             className="text-slate-400 hover:text-white p-1 rounded cursor-pointer"
           >
             <X className="w-4 h-4" />
@@ -170,14 +215,17 @@ export const ShortcutsModal: React.FC<ShortcutsModalProps> = ({ open, onClose })
               key={s.keys}
               className="flex items-center justify-between gap-3 px-2.5 py-1.5 rounded bg-[#0F131B] border border-slate-800"
             >
-              <span className="text-[11.5px] text-slate-300">{s.label}</span>
+              <span className="text-[11.5px] text-slate-300">{t(s.label, s.labelEn)}</span>
               <kbd className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-200 border border-slate-600 whitespace-nowrap">
                 {s.keys}
               </kbd>
             </div>
           ))}
           <p className="text-[10px] text-slate-500 pt-1">
-            Les raccourcis à une lettre sont ignorés pendant la saisie dans un champ de texte.
+            {t(
+              "Les raccourcis à une lettre sont ignorés pendant la saisie dans un champ de texte.",
+              "Single-letter shortcuts are ignored while typing in a text field."
+            )}
           </p>
         </div>
       </div>

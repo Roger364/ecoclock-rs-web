@@ -31,6 +31,7 @@ import {
 } from "../types/hardware";
 import { cpuVoltageAtFreq, gpuVoltageAtFreq } from "../engine/physics";
 import { TechTooltip } from "./TechTooltip";
+import { useLocale } from "../i18n";
 
 type SubGroup = "cpu" | "gpu" | "bus_storage" | "io_display";
 
@@ -67,6 +68,7 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
   onRequestAdmin,
   onNavigateTab,
 }) => {
+  const { t } = useLocale();
   const [group, setGroup] = useState<SubGroup>("cpu");
 
   // Repère mesuré sur Ryzen 9 5900X : le plafond PROCFREQMAX n'a qu'un cran.
@@ -101,7 +103,7 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
     if (isAdmin) {
       return (
         <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 inline-flex items-center gap-1">
-          <Unlock className="w-2.5 h-2.5" /> Admin actif
+          <Unlock className="w-2.5 h-2.5" /> {t("Admin actif", "Admin active")}
         </span>
       );
     }
@@ -110,9 +112,12 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
         type="button"
         onClick={onRequestAdmin}
         className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 inline-flex items-center gap-1 transition-colors cursor-pointer"
-        title="Cliquer pour demander l'élévation UAC Administrateur et débloquer ce réglage"
+        title={t(
+          "Cliquer pour demander l'élévation UAC Administrateur et débloquer ce réglage",
+          "Click to request Administrator UAC elevation and unlock this setting"
+        )}
       >
-        <Lock className="w-2.5 h-2.5" /> Débloquer (UAC)
+        <Lock className="w-2.5 h-2.5" /> {t("Débloquer (UAC)", "Unlock (UAC)")}
       </button>
     );
   };
@@ -134,7 +139,7 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
   const breakdown = [
     { label: "CPU Pkg", w: afterTel.cpuPackageWatts, color: "bg-emerald-400" },
     { label: "GPU + iGPU", w: afterTel.gpuBoardWatts + afterTel.igpuWatts, color: "bg-sky-400" },
-    { label: "Écran", w: afterTel.displayWatts, color: "bg-indigo-400" },
+    { label: t("Écran", "Display"), w: afterTel.displayWatts, color: "bg-indigo-400" },
     { label: "PCIe/PCH", w: afterTel.pcieChipsetWatts, color: "bg-amber-400" },
     { label: "NVMe/SATA", w: afterTel.storageWatts, color: "bg-teal-300" },
     { label: "NIC/USB", w: afterTel.nicUsbMiscWatts, color: "bg-slate-400" },
@@ -150,8 +155,12 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
             <div className="flex items-center gap-2 text-xs text-amber-100">
               <Lock className="w-4 h-4 text-amber-400 shrink-0" />
               <span>
-                Mode <strong>User</strong> actif : les leviers Admin de ce profil (GPU NVML, NVMe APST, PL1) peuvent économiser{" "}
-                <strong className="font-mono text-emerald-300">-{unlockedAdminExtraW.toFixed(1)} W</strong> supplémentaires.
+                <strong>{t("Mode User", "User mode")}</strong> {t(
+                  "actif : les leviers Admin de ce profil (GPU NVML, NVMe APST, PL1) peuvent économiser",
+                  "active: this profile's Admin levers (GPU NVML, NVMe APST, PL1) can save"
+                )}{" "}
+                <strong className="font-mono text-emerald-300">-{unlockedAdminExtraW.toFixed(1)} W</strong>{" "}
+                {t("supplémentaires.", "more.")}
               </span>
             </div>
             <button
@@ -159,7 +168,7 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
               onClick={onRequestAdmin}
               className="px-2.5 py-1 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-[11px] transition-colors cursor-pointer shrink-0"
             >
-              Élever en Admin (UAC)
+              {t("Élever en Admin (UAC)", "Elevate to Admin (UAC)")}
             </button>
           </div>
         )}
@@ -171,7 +180,7 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
               [
                 {
                   id: "cpu" as const,
-                  label: "CPU & Noyau",
+                  label: t("CPU & Noyau", "CPU & Core"),
                   sub: `${afterTel.cpuPackageWatts.toFixed(1)} W · ${afterTel.cpuEffectivePClockMhz} MHz`,
                   icon: Cpu,
                 },
@@ -189,7 +198,7 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
                 },
                 {
                   id: "io_display" as const,
-                  label: "Écran, Réseau, USB",
+                  label: t("Écran, Réseau, USB", "Display, Network, USB"),
                   sub: `${config.displayRefreshHz} Hz · ${(afterTel.displayWatts + afterTel.nicUsbMiscWatts).toFixed(1)} W`,
                   icon: Monitor,
                 },
@@ -226,13 +235,16 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
               <>
                 {/* Plafond fréquence MHz */}
                 <ControlRow
-                  title="Plafond de fréquence CPU (PROCFREQMAX)"
+                  title={t("Plafond de fréquence CPU (PROCFREQMAX)", "CPU frequency cap (PROCFREQMAX)")}
                   tooltipKey="cpu_freq_cap"
                   extraBeforeAfter={`${beforeTel.cpuEffectivePClockMhz} MHz (${beforeTel.cpuVidMv} mV) → ${afterTel.cpuEffectivePClockMhz} MHz (${afterTel.cpuVidMv} mV)`}
                   badge={renderAdminGate(false)}
                   valueText={
                     isAmd && config.cpuFreqCapMhz < markerMhz
-                      ? `${config.cpuFreqCapMhz} MHz demandés · aucun gain sous 3 300 (mesuré)`
+                      ? t(
+                          `${config.cpuFreqCapMhz} MHz demandés · aucun gain sous 3 300 (mesuré)`,
+                          `${config.cpuFreqCapMhz} MHz requested · no gain below 3,300 (measured)`
+                        )
                       : `${config.cpuFreqCapMhz} MHz · VID ~${Math.round(cpuVoltageAtFreq(config.cpuFreqCapMhz) * 1000)} mV`
                   }
                 >
@@ -281,8 +293,8 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
                         onUpdateConfig("cpuFreqCapMhz", v, `PowerWriteACValueIndex(SUB_PROCESSOR, PROCFREQMAX, ${v})`);
                       }}
                       className="eco-slider w-full block"
-                      aria-label="Plafond de fréquence du processeur en MHz"
-                      aria-valuetext={`${config.cpuFreqCapMhz} mégahertz`}
+                      aria-label={t("Plafond de fréquence du processeur en MHz", "Processor frequency cap in MHz")}
+                      aria-valuetext={`${config.cpuFreqCapMhz} ${t("mégahertz", "megahertz")}`}
                     />
                   </div>
                   <div className="relative mt-1 h-4 text-[10px] font-mono text-slate-500">
@@ -297,38 +309,41 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
                   </div>
                   {isAmd ? (
                     <p className="mt-1 text-[10px] leading-snug text-amber-300/80">
-                      Repère 3 300 MHz : mesuré sur Ryzen 9 5900X — 2 000 et 3 300 MHz y donnent le même résultat
-                      (3 342 MHz, +43 % de temps). Sur d'autres processeurs, un plafond plus bas peut encore agir :
-                      c'est un repère, pas une limite.
+                      {t(
+                        "Repère 3 300 MHz : mesuré sur Ryzen 9 5900X — 2 000 et 3 300 MHz y donnent le même résultat (3 342 MHz, +43 % de temps). Sur d'autres processeurs, un plafond plus bas peut encore agir : c'est un repère, pas une limite.",
+                        "3,300 MHz marker: measured on a Ryzen 9 5900X — 2,000 and 3,300 MHz give the same result there (3,342 MHz, +43% time). On other processors a lower cap can still act: this is a marker, not a limit."
+                      )}
                     </p>
                   ) : (
                     <p className="mt-1 text-[10px] leading-snug text-amber-300/70">
-                      Plafond indicatif : le firmware peut l'honorer partiellement. Un refus est compté et signalé,
-                      jamais passé sous silence.
+                      {t(
+                        "Plafond indicatif : le firmware peut l'honorer partiellement. Un refus est compté et signalé, jamais passé sous silence.",
+                        "Indicative cap: the firmware may only partially honor it. A refusal is counted and reported, never silently ignored."
+                      )}
                     </p>
                   )}
                 </ControlRow>
 
                 {/* Turbo Boost Mode */}
                 <ControlRow
-                  title="Politique Turbo Boost / Precision Boost"
+                  title={t("Politique Turbo Boost / Precision Boost", "Turbo Boost / Precision Boost policy")}
                   tooltipKey="cpu_turbo"
                   extraBeforeAfter={`Package CPU : ${beforeTel.cpuPackageWatts} W → ${afterTel.cpuPackageWatts} W`}
                   badge={renderAdminGate(false)}
                   valueText={
                     config.cpuTurboMode === "disabled"
-                      ? "Désactivé (0 pic Vcore)"
+                      ? t("Désactivé (0 pic Vcore)", "Disabled (0 Vcore spike)")
                       : config.cpuTurboMode === "efficient"
                       ? "Efficient Enabled"
-                      : "Agressif (Stock)"
+                      : t("Agressif (Stock)", "Aggressive (Stock)")
                   }
                 >
                   <SegmentedButtons<TurboBoostMode>
                     value={config.cpuTurboMode}
                     options={[
-                      { value: "disabled", label: "Désactivé (≤ 3,6 GHz)" },
-                      { value: "efficient", label: "Efficient (Modéré)" },
-                      { value: "aggressive", label: "Agressif (5,2 GHz)" },
+                      { value: "disabled", label: t("Désactivé (≤ 3,6 GHz)", "Disabled (≤ 3.6 GHz)") },
+                      { value: "efficient", label: t("Efficient (Modéré)", "Efficient (Moderate)") },
+                      { value: "aggressive", label: t("Agressif (5,2 GHz)", "Aggressive (5.2 GHz)") },
                     ]}
                     onChange={(v) =>
                       onUpdateConfig("cpuTurboMode", v, `PowerWriteACValueIndex(SUB_PROCESSOR, PERFBOOSTMODE, "${v}")`)
@@ -339,7 +354,7 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
                 {/* EPP + État max/min */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <ControlRow
-                    title="Préférence Énergétique EPP (HWP/CPPC2)"
+                    title={t("Préférence Énergétique EPP (HWP/CPPC2)", "Energy preference EPP (HWP/CPPC2)")}
                     tooltipKey="cpu_epp"
                     badge={renderAdminGate(false)}
                     valueText={`${config.cpuEpp}%`}
@@ -358,13 +373,13 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
                     />
                     <div className="flex justify-between text-[10px] font-mono text-slate-500 mt-0.5">
                       <span>0% Perf</span>
-                      <span>80% Éco</span>
+                      <span>{t("80% Éco", "80% Eco")}</span>
                       <span>100% Max</span>
                     </div>
                   </ControlRow>
 
                   <ControlRow
-                    title="États Processeur Min / Max (%)"
+                    title={t("États Processeur Min / Max (%)", "Processor states Min / Max (%)")}
                     tooltipKey="cpu_max_pct"
                     badge={renderAdminGate(false)}
                     valueText={`${config.cpuMinPercent}% .. ${config.cpuMaxPercent}%`}
@@ -407,8 +422,11 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
                 {/* C-States & EcoQoS toggles */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <ToggleCard
-                    title="C-States profonds (C6 / C8 / C10)"
-                    subtitle={`Résidence veille profonde : ${afterTel.cpuCStateDeepPct}%`}
+                    title={t("C-States profonds (C6 / C8 / C10)", "Deep C-States (C6 / C8 / C10)")}
+                    subtitle={t(
+                      `Résidence veille profonde : ${afterTel.cpuCStateDeepPct}%`,
+                      `Deep idle residency: ${afterTel.cpuCStateDeepPct}%`
+                    )}
                     tooltipKey="cpu_cstates"
                     checked={config.cpuDeepCStates}
                     onChange={(v) =>
@@ -416,8 +434,11 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
                     }
                   />
                   <ToggleCard
-                    title="EcoQoS processus d'arrière-plan"
-                    subtitle={`Confine le fond sur E-Cores (${afterTel.cpuEffectiveEClockMhz} MHz)`}
+                    title={t("EcoQoS processus d'arrière-plan", "Background process EcoQoS")}
+                    subtitle={t(
+                      `Confine le fond sur E-Cores (${afterTel.cpuEffectiveEClockMhz} MHz)`,
+                      `Confines background work to E-Cores (${afterTel.cpuEffectiveEClockMhz} MHz)`
+                    )}
                     tooltipKey="bg_ecoqos"
                     checked={config.bgEcoQos}
                     onChange={(v) =>
@@ -433,7 +454,7 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
                 {/* Admin CPU : PL1 & Core Parking */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <ControlRow
-                    title="Plafond Package RAPL PL1 (Watts)"
+                    title={t("Plafond Package RAPL PL1 (Watts)", "RAPL PL1 package cap (watts)")}
                     tooltipKey="cpu_pl1"
                     badge={renderAdminGate(true)}
                     valueText={`${config.cpuPl1Watts} W max`}
@@ -451,21 +472,21 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
                         onUpdateConfig("cpuPl1Watts", v, `RAPL/DPTF SetPackagePowerLimit1(${v} W)`, true);
                       }}
                       className="eco-slider admin-slider w-full"
-                      aria-label="Enveloppe de puissance PL1 du processeur en watts"
-                      aria-valuetext={`${config.cpuPl1Watts} watts`}
+                      aria-label={t("Enveloppe de puissance PL1 du processeur en watts", "Processor PL1 power envelope in watts")}
+                      aria-valuetext={`${config.cpuPl1Watts} ${t("watts", "watts")}`}
                     />
                     <div className="flex justify-between text-[10px] font-mono text-slate-500 mt-0.5">
-                      <span>{hardware.cpuPl1MinW} W (min constructeur)</span>
-                      <span>{Math.round(hardware.cpuTdpW * 0.36)} W (Frais)</span>
+                      <span>{hardware.cpuPl1MinW} W {t("(min constructeur)", "(vendor min)")}</span>
+                      <span>{Math.round(hardware.cpuTdpW * 0.36)} W {t("(Frais)", "(Cool)")}</span>
                       <span>{hardware.cpuPl1MaxW} W TDP</span>
                     </div>
                   </ControlRow>
 
                   <ControlRow
-                    title="Core Parking (Cœurs actifs min)"
+                    title={t("Core Parking (Cœurs actifs min)", "Core Parking (min active cores)")}
                     tooltipKey="cpu_core_parking"
                     badge={renderAdminGate(true)}
-                    valueText={`${afterTel.cpuActiveCores}/${afterTel.cpuTotalCores} actifs (${config.cpuCoreParkingMinActive}%)`}
+                    valueText={`${afterTel.cpuActiveCores}/${afterTel.cpuTotalCores} ${t("actifs", "active")} (${config.cpuCoreParkingMinActive}%)`}
                     dimmed={!isAdmin}
                   >
                     <input
@@ -482,9 +503,9 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
                       className="eco-slider admin-slider w-full"
                     />
                     <div className="flex justify-between text-[10px] font-mono text-slate-500 mt-0.5">
-                      <span>12% (2 cœurs)</span>
+                      <span>12% {t("(2 cœurs)", "(2 cores)")}</span>
                       <span>50%</span>
-                      <span>100% (0 parqué)</span>
+                      <span>100% {t("(0 parqué)", "(0 parked)")}</span>
                     </div>
                   </ControlRow>
                 </div>
@@ -495,18 +516,28 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
               <>
                 {!hardware.hasDedicatedGpu && (
                   <div className="rounded-lg bg-sky-500/10 border border-sky-500/30 px-3 py-2 text-[11px] text-sky-100">
-                    <strong>Circuit intégré uniquement ({hardware.gpuName})</strong> : les leviers NVML de carte dédiée sont désactivés. Agissez sur <strong>Sobriété iGPU (RC6)</strong> ci-dessous et sur l'onglet <strong>CPU & Noyau</strong>.
+                    <strong>{t(`Circuit intégré uniquement (${hardware.gpuName})`, `Integrated graphics only (${hardware.gpuName})`)}</strong>{" "}
+                    {t(
+                      ": les leviers NVML de carte dédiée sont désactivés. Agissez sur",
+                      ": dedicated-card NVML levers are disabled. Use"
+                    )}{" "}
+                    <strong>{t("Sobriété iGPU (RC6)", "iGPU efficiency (RC6)")}</strong>{" "}
+                    {t("ci-dessous et sur l'onglet", "below and on the")}{" "}
+                    <strong>{t("CPU & Noyau", "CPU & Core")}</strong>.
                   </div>
                 )}
                 <ControlRow
-                  title={`GPU Power Management Limit (% du TDP ${hardware.gpuTdpW} W)`}
+                  title={t(
+                    `GPU Power Management Limit (% du TDP ${hardware.gpuTdpW} W)`,
+                    `GPU Power Management Limit (% of ${hardware.gpuTdpW} W TDP)`
+                  )}
                   tooltipKey="gpu_power_limit"
                   extraBeforeAfter={`${beforeTel.gpuBoardWatts} W (${beforeTel.gpuTempC}°C) → ${afterTel.gpuBoardWatts} W (${afterTel.gpuTempC}°C)`}
                   badge={renderAdminGate(true)}
                   valueText={
                     hardware.hasDedicatedGpu
                       ? `${config.gpuPowerLimitPct}% (${Math.round((hardware.gpuTdpW * config.gpuPowerLimitPct) / 100)} W max)`
-                      : "N/A (iGPU seul)"
+                      : t("N/A (iGPU seul)", "N/A (iGPU only)")
                   }
                   dimmed={!isAdmin || !hardware.hasDedicatedGpu}
                 >
@@ -523,18 +554,21 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
                       onUpdateConfig("gpuPowerLimitPct", v, `nvmlDeviceSetPowerManagementLimit(dev0, ${mw} mW)`, true);
                     }}
                     className="eco-slider admin-slider w-full"
-                    aria-label="Limite de puissance de la carte graphique en pourcentage du TDP"
-                    aria-valuetext={`${config.gpuPowerLimitPct} pour cent`}
+                    aria-label={t("Limite de puissance de la carte graphique en pourcentage du TDP", "Graphics card power limit as a percentage of TDP")}
+                    aria-valuetext={`${config.gpuPowerLimitPct} ${t("pour cent", "percent")}`}
                   />
                   <div className="flex justify-between text-[10px] font-mono text-slate-500 mt-1">
-                    <span>{hardware.gpuMinPowerPct}% ({Math.round((hardware.gpuTdpW * hardware.gpuMinPowerPct) / 100)} W min VBIOS)</span>
+                    <span>{hardware.gpuMinPowerPct}% ({Math.round((hardware.gpuTdpW * hardware.gpuMinPowerPct) / 100)} W {t("min VBIOS", "VBIOS min")})</span>
                     <span className="text-emerald-400/80">70% ({Math.round(hardware.gpuTdpW * 0.7)} W · ~91% FPS)</span>
                     <span>100% ({hardware.gpuTdpW} W)</span>
                   </div>
                 </ControlRow>
 
                 <ControlRow
-                  title="Plafond d'horloge cœur GPU (Locked Clocks 210..Max MHz)"
+                  title={t(
+                    "Plafond d'horloge cœur GPU (Locked Clocks 210..Max MHz)",
+                    "GPU core clock cap (Locked Clocks 210..Max MHz)"
+                  )}
                   tooltipKey="gpu_clock_cap"
                   extraBeforeAfter={`${beforeTel.gpuEffectiveCoreMhz} MHz (${beforeTel.gpuVoltageMv} mV) → ${afterTel.gpuEffectiveCoreMhz} MHz (${afterTel.gpuVoltageMv} mV)`}
                   badge={renderAdminGate(true)}
@@ -553,31 +587,31 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
                       onUpdateConfig("gpuCoreClockCapMhz", v, `nvmlDeviceSetGpuLockedClocks(dev0, 210, ${v})`, true);
                     }}
                     className="eco-slider admin-slider w-full"
-                    aria-label="Plafond d'horloge du cœur graphique en MHz"
-                    aria-valuetext={`${config.gpuCoreClockCapMhz} mégahertz`}
+                    aria-label={t("Plafond d'horloge du cœur graphique en MHz", "Graphics core clock cap in MHz")}
+                    aria-valuetext={`${config.gpuCoreClockCapMhz} ${t("mégahertz", "megahertz")}`}
                   />
                   <div className="flex justify-between text-[10px] font-mono text-slate-500 mt-1">
                     <span>{hardware.gpuMinClockMhz} MHz</span>
-                    <span>~{Math.round(hardware.gpuMaxClockMhz * 0.67)} MHz (0,82V)</span>
+                    <span>~{Math.round(hardware.gpuMaxClockMhz * 0.67)} MHz {t("(0,82V)", "(0.82V)")}</span>
                     <span>{hardware.gpuMaxClockMhz} MHz max</span>
                   </div>
                 </ControlRow>
 
                 <ControlRow
-                  title="Politique d'états mémoire GDDR6 (P8 / P5 / P0)"
+                  title={t("Politique d'états mémoire GDDR6 (P8 / P5 / P0)", "GDDR6 memory state policy (P8 / P5 / P0)")}
                   tooltipKey="gpu_vram_policy"
                   extraBeforeAfter={`VRAM effective : ${beforeTel.gpuEffectiveVramMhz} MHz → ${afterTel.gpuEffectiveVramMhz} MHz (${afterTel.gpuPState})`}
                   badge={renderAdminGate(true)}
-                  valueText={`Actuel : ${afterTel.gpuPState} · ${afterTel.gpuEffectiveVramMhz} MHz`}
+                  valueText={`${t("Actuel :", "Current:")} ${afterTel.gpuPState} · ${afterTel.gpuEffectiveVramMhz} MHz`}
                   dimmed={!isAdmin}
                 >
                   <SegmentedButtons<GpuVramPolicy>
                     disabled={!isAdmin}
                     value={config.gpuVramPolicy}
                     options={[
-                      { value: "force_p8_idle", label: "Forcer P8 Repos (405 MHz)" },
-                      { value: "prefer_p5", label: "Équilibré P5 (Éco 3D)" },
-                      { value: "auto", label: "Auto Pilote (Stock)" },
+                      { value: "force_p8_idle", label: t("Forcer P8 Repos (405 MHz)", "Force P8 idle (405 MHz)") },
+                      { value: "prefer_p5", label: t("Équilibré P5 (Éco 3D)", "Balanced P5 (3D eco)") },
+                      { value: "auto", label: t("Auto Pilote (Stock)", "Driver auto (Stock)") },
                     ]}
                     onChange={(v) =>
                       onUpdateConfig("gpuVramPolicy", v, `nvmlSetMemoryPStatePolicy(dev0, "${v}")`, true)
@@ -587,13 +621,22 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <ToggleCard
-                    title="Semi-passif 0 RPM Fan-Stop (< 52°C)"
+                    title={t("Semi-passif 0 RPM Fan-Stop (< 52°C)", "Semi-passive 0 RPM fan-stop (< 52°C)")}
                     subtitle={
                       !hardware.hasDedicatedGpu
-                        ? "Pas de ventilateur GPU dédié (refroidi par le CPU)"
+                        ? t(
+                            "Pas de ventilateur GPU dédié (refroidi par le CPU)",
+                            "No dedicated GPU fan (cooled by the CPU)"
+                          )
                         : afterTel.gpuFanRpm === 0
-                        ? `Ventilateurs GPU À L'ARRÊT (0 RPM · ${afterTel.gpuTempC}°C)`
-                        : `Ventilateurs GPU : ${afterTel.gpuFanRpm} RPM (${afterTel.gpuTempC}°C)`
+                        ? t(
+                            `Ventilateurs GPU À L'ARRÊT (0 RPM · ${afterTel.gpuTempC}°C)`,
+                            `GPU fans stopped (0 RPM · ${afterTel.gpuTempC}°C)`
+                          )
+                        : t(
+                            `Ventilateurs GPU : ${afterTel.gpuFanRpm} RPM (${afterTel.gpuTempC}°C)`,
+                            `GPU fans: ${afterTel.gpuFanRpm} RPM (${afterTel.gpuTempC}°C)`
+                          )
                     }
                     tooltipKey="gpu_zero_rpm"
                     checked={hardware.hasDedicatedGpu ? config.gpuZeroRpmFanStop : false}
@@ -603,8 +646,11 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
                     }
                   />
                   <ToggleCard
-                    title="Sobriété iGPU (Intel GT / Radeon iGPU)"
-                    subtitle={`Consommation circuit intégré : ${afterTel.igpuWatts.toFixed(1)} W (RC6)`}
+                    title={t("Sobriété iGPU (Intel GT / Radeon iGPU)", "iGPU efficiency (Intel GT / Radeon iGPU)")}
+                    subtitle={t(
+                      `Consommation circuit intégré : ${afterTel.igpuWatts.toFixed(1)} W (RC6)`,
+                      `Integrated graphics power: ${afterTel.igpuWatts.toFixed(1)} W (RC6)`
+                    )}
                     tooltipKey="igpu_eco"
                     checked={config.igpuEcoClock}
                     onChange={(v) =>
@@ -627,9 +673,9 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
                   <SegmentedButtons<PcieAspmMode>
                     value={config.pcieAspm}
                     options={[
-                      { value: "off", label: "OFF (L0 fixe)" },
-                      { value: "l0s", label: "L0s Modéré" },
-                      { value: "l1", label: "L1 Éco (User)" },
+                      { value: "off", label: t("OFF (L0 fixe)", "OFF (fixed L0)") },
+                      { value: "l0s", label: t("L0s Modéré", "L0s moderate") },
+                      { value: "l1", label: t("L1 Éco (User)", "L1 eco (User)") },
                       { value: "l1_substates", label: "L1.2 CLKREQ# (Max)" },
                     ]}
                     onChange={(v) => {
@@ -644,7 +690,10 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
                 </ControlRow>
 
                 <ControlRow
-                  title="SSD NVMe APST (Transition Autonome d'États d'Énergie)"
+                  title={t(
+                    "SSD NVMe APST (Transition Autonome d'États d'Énergie)",
+                    "NVMe APST SSD (Autonomous Power State Transition)"
+                  )}
                   tooltipKey="nvme_apst"
                   extraBeforeAfter={`NVMe : ${beforeTel.nvmeTempC}°C → ${afterTel.nvmeTempC}°C | État : ${afterTel.nvmeCurrentState}`}
                   badge={renderAdminGate(true)}
@@ -667,7 +716,7 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
                 </ControlRow>
 
                 <ControlRow
-                  title="Délai d'inactivité NVMe avant mise en veille (ms)"
+                  title={t("Délai d'inactivité NVMe avant mise en veille (ms)", "NVMe idle timeout before sleep (ms)")}
                   tooltipKey="nvme_timeout"
                   badge={renderAdminGate(true)}
                   valueText={`${config.nvmeIdleTimeoutMs} ms`}
@@ -687,14 +736,14 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
                     className="eco-slider admin-slider w-full"
                   />
                   <div className="flex justify-between text-[10px] font-mono text-slate-500 mt-0.5">
-                    <span>50 ms (Ultra-sobre)</span>
-                    <span>200 ms (Recommandé)</span>
-                    <span>1500 ms (Stock)</span>
+                    <span>50 ms {t("(Ultra-sobre)", "(ultra-low)")}</span>
+                    <span>200 ms {t("(Recommandé)", "(recommended)")}</span>
+                    <span>1500 ms {t("(Stock)", "(stock)")}</span>
                   </div>
                 </ControlRow>
 
                 <ControlRow
-                  title="Lien PHY SATA AHCI (HIPM / DIPM Slumber)"
+                  title={t("Lien PHY SATA AHCI (HIPM / DIPM Slumber)", "SATA AHCI PHY link (HIPM / DIPM Slumber)")}
                   tooltipKey="sata_alpm"
                   badge={renderAdminGate(true)}
                   valueText={config.sataAlpm.toUpperCase()}
@@ -719,18 +768,24 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
             {group === "io_display" && (
               <>
                 <ControlRow
-                  title="Fréquence de rafraîchissement écran (Hz + impact VRAM GPU)"
+                  title={t(
+                    "Fréquence de rafraîchissement écran (Hz + impact VRAM GPU)",
+                    "Display refresh rate (Hz + GPU VRAM impact)"
+                  )}
                   tooltipKey="display_hz"
-                  extraBeforeAfter={`Écran : ${beforeTel.displayWatts} W → ${afterTel.displayWatts} W | VRAM : ${afterTel.gpuEffectiveVramMhz} MHz`}
+                  extraBeforeAfter={t(
+                    `Écran : ${beforeTel.displayWatts} W → ${afterTel.displayWatts} W | VRAM : ${afterTel.gpuEffectiveVramMhz} MHz`,
+                    `Display: ${beforeTel.displayWatts} W → ${afterTel.displayWatts} W | VRAM: ${afterTel.gpuEffectiveVramMhz} MHz`
+                  )}
                   badge={renderAdminGate(false)}
                   valueText={`${config.displayRefreshHz} Hz (${(1000 / config.displayRefreshHz).toFixed(2)} ms/img)`}
                 >
                   <SegmentedButtons<DisplayRefreshHz>
                     value={config.displayRefreshHz}
                     options={[
-                      { value: 60 as DisplayRefreshHz, label: "60 Hz (Éco Max)" },
+                      { value: 60 as DisplayRefreshHz, label: t("60 Hz (Éco Max)", "60 Hz (max eco)") },
                       { value: 75 as DisplayRefreshHz, label: "75 Hz" },
-                      { value: 120 as DisplayRefreshHz, label: "120 Hz (Fluide)" },
+                      { value: 120 as DisplayRefreshHz, label: t("120 Hz (Fluide)", "120 Hz (smooth)") },
                       { value: 165 as DisplayRefreshHz, label: "165 Hz (VRAM P0!)" },
                     ].filter((option) => option.value <= hardware.maxDisplayHz)}
                     onChange={(v) =>
@@ -740,7 +795,10 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
                 </ControlRow>
 
                 <ControlRow
-                  title="Luminosité matérielle écran (WMI / DDC-CI VCP 0x10)"
+                  title={t(
+                    "Luminosité matérielle écran (WMI / DDC-CI VCP 0x10)",
+                    "Hardware display brightness (WMI / DDC-CI VCP 0x10)"
+                  )}
                   tooltipKey="display_brightness"
                   badge={renderAdminGate(false)}
                   valueText={`${config.displayBrightnessPct}% (~${Math.round(45 + config.displayBrightnessPct * 3.05)} cd/m²) · ${afterTel.displayWatts} W`}
@@ -758,14 +816,17 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
                     className="eco-slider w-full"
                   />
                   <div className="flex justify-between text-[10px] font-mono text-slate-500 mt-0.5">
-                    <span>20% (Nuit 105 cd/m²)</span>
-                    <span>45% (Norme sRGB 180 cd/m²)</span>
+                    <span>20% {t("(Nuit 105 cd/m²)", "(night 105 cd/m²)")}</span>
+                    <span>45% {t("(Norme sRGB 180 cd/m²)", "(sRGB 180 cd/m²)")}</span>
                     <span>100% (350 cd/m²)</span>
                   </div>
                 </ControlRow>
 
                 <ControlRow
-                  title="Résolution Timer Noyau Windows & Coalescing d'IRQ"
+                  title={t(
+                    "Résolution Timer Noyau Windows & Coalescing d'IRQ",
+                    "Windows kernel timer resolution & IRQ coalescing"
+                  )}
                   tooltipKey="timer_resolution"
                   badge={renderAdminGate(false)}
                   valueText={
@@ -779,9 +840,9 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
                   <SegmentedButtons<TimerResolutionPolicy>
                     value={config.timerResolution}
                     options={[
-                      { value: "coalesced_15_6ms", label: "Coalescé 15,6 ms (C8+)" },
-                      { value: "standard_1ms", label: "Standard 1,0 ms" },
-                      { value: "high_0_5ms", label: "Forcé 0,5 ms (Gaspille)" },
+                      { value: "coalesced_15_6ms", label: t("Coalescé 15,6 ms (C8+)", "Coalesced 15.6 ms (C8+)") },
+                      { value: "standard_1ms", label: t("Standard 1,0 ms", "Standard 1.0 ms") },
+                      { value: "high_0_5ms", label: t("Forcé 0,5 ms (Gaspille)", "Forced 0.5 ms (wasteful)") },
                     ]}
                     onChange={(v) =>
                       onUpdateConfig(
@@ -794,7 +855,10 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
                 </ControlRow>
 
                 <ControlRow
-                  title="Politique Radio Wi-Fi 802.11 (CAM / Power Save Polling)"
+                  title={t(
+                    "Politique Radio Wi-Fi 802.11 (CAM / Power Save Polling)",
+                    "Wi-Fi 802.11 radio policy (CAM / Power Save Polling)"
+                  )}
                   tooltipKey="wifi_psp"
                   badge={renderAdminGate(false)}
                   valueText={config.wifiPowerMode.toUpperCase()}
@@ -804,7 +868,7 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
                     options={[
                       { value: "max_psp", label: "Max PSP (0,3 W)" },
                       { value: "medium_psp", label: "Medium PSP (0,9 W)" },
-                      { value: "cam", label: "CAM Éveil continu (2,6 W)" },
+                      { value: "cam", label: t("CAM Éveil continu (2,6 W)", "CAM always awake (2.6 W)") },
                     ]}
                     onChange={(v) =>
                       onUpdateConfig("wifiPowerMode", v, `PowerWriteACValueIndex(SUB_WIFI, PSM, "${v}")`)
@@ -814,8 +878,11 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <ToggleCard
-                    title="Suspension Sélective USB (U3)"
-                    subtitle="Met en sommeil les ports USB inactifs (< 2,5 mA)"
+                    title={t("Suspension Sélective USB (U3)", "USB selective suspend (U3)")}
+                    subtitle={t(
+                      "Met en sommeil les ports USB inactifs (< 2,5 mA)",
+                      "Puts inactive USB ports to sleep (< 2.5 mA)"
+                    )}
                     tooltipKey="usb_suspend"
                     checked={config.usbSelectiveSuspend}
                     onChange={(v) =>
@@ -824,7 +891,11 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
                   />
                   <ToggleCard
                     title="Ethernet 802.3az EEE (2.5 GbE LPI)"
-                    subtitle={isAdmin ? "Économise ~2,4 W (+0,02 ms ping)" : "Requiert Admin UAC (NDIS OID)"}
+                    subtitle={
+                      isAdmin
+                        ? t("Économise ~2,4 W (+0,02 ms ping)", "Saves ~2.4 W (+0.02 ms ping)")
+                        : t("Requiert Admin UAC (NDIS OID)", "Requires Admin UAC (NDIS OID)")
+                    }
                     tooltipKey="nic_eee"
                     checked={isAdmin ? config.nicEeeEnabled : false}
                     requiresAdmin
@@ -845,7 +916,12 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-300">
               <Terminal className="w-3.5 h-3.5 text-sky-400" />
-              <span>Journal temps réel des appels FFI Win32 / NVML (zéro pilote noyau)</span>
+              <span>
+                {t(
+                  "Journal temps réel des appels FFI Win32 / NVML (zéro pilote noyau)",
+                  "Live log of Win32 / NVML FFI calls (zero kernel driver)"
+                )}
+              </span>
             </div>
             <span className="font-mono text-[10px] text-slate-500">poll 1 Hz · 0,02% CPU</span>
           </div>
@@ -880,15 +956,15 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
             <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-200">
               <Activity className="w-3.5 h-3.5 text-emerald-400" />
               <TechTooltip tooltipKey="kpi_power">
-                <span>Télémétrie Puissance (Avant vs Après)</span>
+                <span>{t("Télémétrie Puissance (Avant vs Après)", "Power telemetry (Before vs After)")}</span>
               </TechTooltip>
             </div>
             <div className="flex items-center gap-3 text-[10.5px] font-mono">
               <span className="inline-flex items-center gap-1 text-rose-300/90">
-                <span className="w-2.5 h-0.5 bg-rose-400 inline-block" /> Avant {beforeTel.totalSystemWatts}W
+                <span className="w-2.5 h-0.5 bg-rose-400 inline-block" /> {t("Avant", "Before")} {beforeTel.totalSystemWatts}W
               </span>
               <span className="inline-flex items-center gap-1 text-emerald-300">
-                <span className="w-2.5 h-0.5 bg-emerald-400 inline-block" /> Après {afterTel.totalSystemWatts}W
+                <span className="w-2.5 h-0.5 bg-emerald-400 inline-block" /> {t("Après", "After")} {afterTel.totalSystemWatts}W
               </span>
             </div>
           </div>
@@ -957,7 +1033,7 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
           <div className="flex items-center justify-between mb-2">
             <TechTooltip tooltipKey="kpi_latency_ms">
               <span className="text-xs font-semibold text-slate-200">
-                Effets en vrai (Temps d'exécution en ms)
+                {t("Effets en vrai (Temps d'exécution en ms)", "Real-world effects (execution time in ms)")}
               </span>
             </TechTooltip>
             <button
@@ -965,7 +1041,7 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
               onClick={() => onNavigateTab("compare")}
               className="text-[11px] text-sky-400 hover:text-sky-300 inline-flex items-center gap-1 font-medium cursor-pointer"
             >
-              Tout voir & Bencher <ArrowRight className="w-3 h-3" />
+              {t("Tout voir & Bencher", "See all & benchmark")} <ArrowRight className="w-3 h-3" />
             </button>
           </div>
 
@@ -1012,7 +1088,7 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
             <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-200">
               <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
               <TechTooltip tooltipKey="optimizer_pareto">
-                <span>Propositions optimisées</span>
+                <span>{t("Propositions optimisées", "Optimized proposals")}</span>
               </TechTooltip>
             </div>
             <button
@@ -1020,13 +1096,15 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
               onClick={() => onNavigateTab("optimizer")}
               className="text-[11px] text-emerald-400 hover:text-emerald-300 inline-flex items-center gap-1 font-medium cursor-pointer"
             >
-              Pourquoi & détails ({topProposals.length}) <ArrowRight className="w-3 h-3" />
+              {t("Pourquoi & détails", "Why & details")} ({topProposals.length}) <ArrowRight className="w-3 h-3" />
             </button>
           </div>
 
           {topProposals.length === 0 ? (
             <div className="rounded-lg bg-emerald-950/30 border border-emerald-500/25 p-3 text-xs text-emerald-200">
-              Votre configuration actuelle est déjà sur le <strong>Front de Pareto</strong> optimal ! Tous les gaspillages majeurs sont éliminés.
+              {t("Votre configuration actuelle est déjà sur le", "Your current configuration is already on the optimal")}{" "}
+              <strong>{t("Front de Pareto", "Pareto front")}</strong>{" "}
+              {t("optimal ! Tous les gaspillages majeurs sont éliminés.", "! All major waste is eliminated.")}
             </div>
           ) : (
             <div className="space-y-2">
@@ -1045,7 +1123,7 @@ export const SubsystemControls: React.FC<SubsystemControlsProps> = ({
                       className="px-2 py-1 rounded bg-emerald-600/90 hover:bg-emerald-500 text-white text-[10.5px] font-semibold shrink-0 cursor-pointer inline-flex items-center gap-1"
                     >
                       {p.requiresAdmin && !isAdmin && <Lock className="w-2.5 h-2.5" />}
-                      Appliquer
+                      {t("Appliquer", "Apply")}
                     </button>
                   </div>
                   <p className="text-[10.5px] text-slate-400 line-clamp-2">{p.whyTechnical}</p>
@@ -1124,11 +1202,12 @@ function SegmentedButtons<T extends string | number>({
   onChange,
   disabled = false,
 }: SegmentedButtonsProps<T>) {
+  const { t } = useLocale();
   return (
     <div
       className="grid gap-1.5"
       role="group"
-      aria-label="Options mutuellement exclusives"
+      aria-label={t("Options mutuellement exclusives", "Mutually exclusive options")}
       style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
     >
       {options.map((opt) => {
@@ -1178,6 +1257,7 @@ const ToggleCard: React.FC<ToggleCardProps> = ({
   onRequestAdmin,
   onChange,
 }) => {
+  const { t } = useLocale();
   const locked = !disabled && requiresAdmin && !isAdmin;
   return (
     <div className="rounded-lg bg-[#0F131B] border border-slate-800/90 p-3 flex items-center justify-between gap-2">
@@ -1201,7 +1281,7 @@ const ToggleCard: React.FC<ToggleCardProps> = ({
           role="switch"
           disabled={disabled}
           aria-checked={checked}
-          aria-label={`${title} : ${checked ? "activé" : "désactivé"}`}
+          aria-label={`${title} : ${checked ? t("activé", "enabled") : t("désactivé", "disabled")}`}
           onClick={() => !disabled && onChange(!checked)}
           className={`w-10 h-5.5 rounded-full p-0.5 transition-colors shrink-0 focus-visible:ring-2 focus-visible:ring-emerald-400/70 ${
             disabled ? "opacity-40 cursor-not-allowed " : "cursor-pointer "

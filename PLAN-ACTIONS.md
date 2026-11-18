@@ -202,6 +202,15 @@ Détection retenue : le **code retour de l'écriture**. Rust le consigne dans `A
 
 ---
 
+# Vague 12 — Interface FR/EN, v1 (18/11/2026)
+
+1. **Bascule persistante.** `ecoclock_rs_locale_v1` dans `localStorage`, `document.documentElement.lang` mis à jour, défaut français. Le sélecteur FR/EN vit dans la barre de titre.
+2. **Traduit :** coquille (titre, navigation, pied de page), 5 profils (noms et descriptions d'usine, un profil renommé garde son nom), scénarios de charge, libellés matériel, tous les réglages et leurs notes, dialogues UAC / démarrage / matériel, raccourcis, notifications, barrière d'erreur.
+3. **Reste en français, annoncé :** constats d'audit et correctifs, propositions Pareto et leurs explications, noms de benchmarks, infobulles techniques, onglets Avant/Après, Mode intelligent, Audit et 5 Profils. En mode anglais, un bandeau explicite le dit au lieu de mélanger les langues en silence.
+4. **Pas de dictionnaire central.** Les paires FR/EN vivent au point d'affichage (`t(fr, en)`), les données localisées à côté de leur source (`descriptionEn`, `shortLabelEn`, `hardwareDisplayLabel`). Aucune clé abstraite à désynchroniser, et le français reste la source de vérité du projet.
+
+---
+
 # Idées à ne pas appliquer (et pourquoi)
 
 1. **Supprimer `gpu_vram_policy` / `timer_resolution` de l'export.** Non : c'était soigner le symptôme ; la vague 4 en a fait les champs Rust eux-mêmes.

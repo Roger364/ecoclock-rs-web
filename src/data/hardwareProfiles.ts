@@ -114,6 +114,33 @@ export const HARDWARE_PROFILES: HardwareProfile[] = [
 
 export const DEFAULT_HARDWARE_PROFILE = HARDWARE_PROFILES[0];
 
+const HARDWARE_EN: Record<string, { label: string; note: string }> = {
+  "intel-13700k-rtx4070": {
+    label: "Intel desktop + NVIDIA",
+    note: "Desktop reference: the V/F curve turns exponential above 3.8 GHz; GDDR6X is locked to P0 above 120 Hz.",
+  },
+  "amd-7800x3d-4070s": {
+    label: "AMD 3D V-Cache desktop",
+    note: "EPP and CPPC2 are very responsive: prefer the MHz cap over forcing the maximum state.",
+  },
+  "laptop-7840hs-4060": {
+    label: "Ryzen laptop + RTX Laptop",
+    note: "Mobile GPU efficiency depends heavily on PL: 75% of TDP keeps ~94% of in-game FPS.",
+  },
+  "mini-igpu-12400": {
+    label: "Mini-PC / iGPU only",
+    note: "No dedicated GPU: NVML levers are disabled; the iGPU and CPU package become the priority.",
+  },
+};
+
+export function hardwareDisplayLabel(profile: HardwareProfile, locale: "fr" | "en"): string {
+  return locale === "en" ? (HARDWARE_EN[profile.id]?.label ?? profile.label) : profile.label;
+}
+
+export function hardwareDisplayNote(profile: HardwareProfile, locale: "fr" | "en"): string {
+  return locale === "en" ? (HARDWARE_EN[profile.id]?.note ?? profile.note) : profile.note;
+}
+
 export function getHardwareProfile(id: string): HardwareProfile {
   return HARDWARE_PROFILES.find((p) => p.id === id) ?? DEFAULT_HARDWARE_PROFILE;
 }

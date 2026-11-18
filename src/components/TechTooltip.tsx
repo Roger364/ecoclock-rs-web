@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Cpu, HelpCircle, Lock, Pin, ShieldCheck, Terminal, X, Zap } from "lucide-react";
 import { TOOLTIPS } from "../data/tooltips";
 import { useTooltipsEnabled } from "../store/settings";
+import { useLocale } from "../i18n";
 
 interface TechTooltipProps {
   tooltipKey: string;
@@ -19,6 +20,7 @@ export const TechTooltip: React.FC<TechTooltipProps> = ({
   className = "",
   extraBeforeAfter,
 }) => {
+  const { locale, t } = useLocale();
   const doc = TOOLTIPS[tooltipKey];
   const tooltipsOn = useTooltipsEnabled();
   const triggerRef = useRef<HTMLSpanElement>(null);
@@ -147,10 +149,19 @@ export const TechTooltip: React.FC<TechTooltipProps> = ({
 
   const privBadge =
     doc.privilege === "user"
-      ? { label: "Mode User (sans UAC)", cls: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" }
+      ? {
+          label: t("Mode User (sans UAC)", "User mode (no UAC)"),
+          cls: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+        }
       : doc.privilege === "admin"
-      ? { label: "Droits Admin (UAC)", cls: "bg-amber-500/15 text-amber-300 border-amber-500/30" }
-      : { label: "User + Admin étendu", cls: "bg-sky-500/15 text-sky-300 border-sky-500/30" };
+      ? {
+          label: t("Droits Admin (UAC)", "Admin rights (UAC)"),
+          cls: "bg-amber-500/15 text-amber-300 border-amber-500/30",
+        }
+      : {
+          label: t("User + Admin étendu", "User + extended Admin"),
+          cls: "bg-sky-500/15 text-sky-300 border-sky-500/30",
+        };
 
   return (
     <>
@@ -189,7 +200,7 @@ export const TechTooltip: React.FC<TechTooltipProps> = ({
             onBlur={() => {
               if (!pinned) handleLeave();
             }}
-            aria-label={`Infobulle détaillée : ${doc.title}`}
+            aria-label={t(`Infobulle détaillée : ${doc.title}`, `Detailed tooltip: ${doc.title}`)}
             aria-expanded={open}
             aria-haspopup="dialog"
             className={`inline-flex items-center justify-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 ${
@@ -219,7 +230,7 @@ export const TechTooltip: React.FC<TechTooltipProps> = ({
               zIndex: 9999,
             }}
             role="dialog"
-            aria-label={`Documentation technique : ${doc.title}`}
+            aria-label={t(`Documentation technique : ${doc.title}`, `Technical documentation: ${doc.title}`)}
             className="overflow-y-auto rounded-lg border border-slate-600/80 bg-[#11161F]/98 shadow-2xl shadow-black/80 backdrop-blur-md text-left animate-in fade-in duration-100"
           >
             {/* Header */}
@@ -244,24 +255,32 @@ export const TechTooltip: React.FC<TechTooltipProps> = ({
                     setOpen(false);
                   }}
                   className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-700/60"
-                  title="Fermer l'infobulle épinglée"
+                  title={t("Fermer l'infobulle épinglée", "Close pinned tooltip")}
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
               ) : (
                 <span className="text-[10px] text-slate-500 inline-flex items-center gap-0.5 shrink-0 pt-0.5">
-                  <Pin className="w-2.5 h-2.5" /> clic ?
+                  <Pin className="w-2.5 h-2.5" /> {t("clic ?", "click?")}
                 </span>
               )}
             </div>
 
             {/* Body */}
             <div className="p-3.5 space-y-2.5 text-[11.5px] leading-relaxed text-slate-300">
+              {locale === "en" && (
+                <p className="rounded border border-sky-500/25 bg-sky-500/10 px-2 py-1 text-[10px] text-sky-100">
+                  {t(
+                    "Documentation technique encore en français.",
+                    "Technical documentation is still in French."
+                  )}
+                </p>
+              )}
               {/* Win32 API */}
               <div className="rounded bg-[#0B0E14] border border-slate-800 px-2.5 py-1.5">
                 <div className="flex items-center gap-1.5 text-[10px] font-medium text-sky-400 mb-0.5">
                   <Terminal className="w-3 h-3" />
-                  <span>API Windows / Registre matériel piloté par Rust</span>
+                  <span>{t("API Windows / Registre matériel piloté par Rust", "Windows API / hardware registry driven by Rust")}</span>
                 </div>
                 <code className="text-[10.5px] text-slate-300 break-all block leading-snug">
                   {doc.winApi}
@@ -275,7 +294,7 @@ export const TechTooltip: React.FC<TechTooltipProps> = ({
               <div className="rounded bg-slate-800/45 border border-slate-700/60 px-2.5 py-2">
                 <div className="flex items-center gap-1.5 text-[10.5px] font-semibold text-slate-200 mb-0.5">
                   <Cpu className="w-3 h-3 text-sky-400" />
-                  <span>Fonctionnement bas niveau & Loi physique</span>
+                  <span>{t("Fonctionnement bas niveau & Loi physique", "Low-level behavior & physical law")}</span>
                 </div>
                 <p className="text-[11px] text-slate-300">{doc.physicsDetail}</p>
               </div>
@@ -284,12 +303,12 @@ export const TechTooltip: React.FC<TechTooltipProps> = ({
               <div className="rounded bg-emerald-950/35 border border-emerald-500/25 px-2.5 py-2">
                 <div className="flex items-center gap-1.5 text-[10.5px] font-semibold text-emerald-300 mb-0.5">
                   <Zap className="w-3 h-3" />
-                  <span>Impact concret Avant → Après (W, °C, RPM, ms)</span>
+                  <span>{t("Impact concret Avant → Après (W, °C, RPM, ms)", "Concrete impact Before → After (W, °C, RPM, ms)")}</span>
                 </div>
                 <p className="text-[11px] text-emerald-100/90">{doc.beforeAfterHint}</p>
                 {extraBeforeAfter && (
                   <p className="mt-1 pt-1 border-t border-emerald-500/20 font-mono text-[10.5px] text-emerald-300">
-                    Mesure actuelle : {extraBeforeAfter}
+                    {t("Mesure actuelle :", "Current measurement:")} {extraBeforeAfter}
                   </p>
                 )}
               </div>

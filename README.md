@@ -18,6 +18,7 @@ embarqué les applique via les API Windows documentées, sans pilote noyau.
 - **Script `.ps1` autonome** : applique le profil, sauvegarde le plan d'alimentation actif et sait le restaurer (`-Restore`).
 - **Audit de sûreté** avant application, matrice adaptative sur 7 situations, journal des appels Win32.
 - **Détection de capacités** : un réglage refusé par Windows est compté et annoncé, jamais ignoré en silence.
+- **Interface FR/EN** : bascule persistante dans la barre de titre. Les réglages, les profils, les dialogues, les raccourcis et les retours d'action sont traduits ; les diagnostics générés par le moteur, les infobulles techniques et les vues d'analyse restent en français, avec un bandeau qui l'annonce.
 
 ## Mesuré ou modélisé
 
@@ -87,11 +88,13 @@ npm run check:rust   # extrait le crate puis cargo check --all-targets
 - **EPP (`PERFEPP`) sans effet mesurable** sur ce poste : 6 122 / 6 029 / 6 105 ms à EPP 0 / 50 / 100, soit l'amplitude du bruit (±1,6 %). Il n'est pas présenté comme un levier de débit.
 - **Turbo désactivé** : 7 806 ms au lieu de 6 115 (+29,6 %), effet net et reproductible.
 - La température CPU n'est pas toujours exposée (`MSAcpi_ThermalZoneTemperature` absent sur certains postes).
+- **Interface anglaise (v1)** : la coquille, les réglages, les profils, les dialogues et les notifications sont traduits. Les constats d'audit, les propositions Pareto, les noms de benchmarks et les infobulles techniques sont produits en français par le moteur et le restent ; les vues Avant/Après, Mode intelligent et Audit l'annoncent en mode anglais.
 
 ## Structure
 
 ```
 src/engine/                  physique, optimisation Pareto, validation, tests
+src/i18n/                    langue persistée (FR/EN) et helper de traduction
 src/data/rustProject.ts      crate Rust embarqué (22 fichiers)
 src/utils/windowsScript.ts   générateur du script .ps1
 PLAN-ACTIONS.md              état du projet, décisions et pièges connus

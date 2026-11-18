@@ -40,6 +40,7 @@ import { AdaptiveRule, AdaptiveSettings } from "./types/adaptive";
 import {
   DEFAULT_PROFILES,
   parseProfilesToml,
+  profileDisplayName,
   serializeProfilesToToml,
   STOCK_BASELINE_CONFIG,
   WORKLOAD_META,
@@ -80,6 +81,9 @@ import { UacModal } from "./components/UacModal";
 import { AutostartModal } from "./components/AutostartModal";
 import { HardwareModal } from "./components/HardwareModal";
 import { ShortcutsModal, ToastStack } from "./components/Feedback";
+import { LanguageToggle } from "./components/LanguageToggle";
+import { LocaleNotice } from "./components/LocaleNotice";
+import { getLocale, useLocale } from "./i18n";
 
 const STORAGE_KEY_PROFILES = "ecoclock_rs_profiles_v1";
 const STORAGE_KEY_AUTOSTART = "ecoclock_rs_autostart_v1";
@@ -96,10 +100,14 @@ function readJsonStorage(key: string): unknown {
 }
 
 function nowTimeStr(): string {
-  return new Date().toLocaleTimeString("fr-FR", { hour12: false });
+  return new Date().toLocaleTimeString(getLocale() === "en" ? "en-GB" : "fr-FR", {
+    hour12: false,
+  });
 }
 
 export function App() {
+  const { locale, t } = useLocale();
+
   // 1. Privilège & fenêtres modales (démarre TOUJOURS en mode User asInvoker)
   const [privilege, setPrivilege] = useState<PrivilegeLevel>("user");
   const [uacOpen, setUacOpen] = useState(false);
@@ -336,7 +344,9 @@ export function App() {
       const target = profiles.find((p) => p.id === slot);
       if (!target) return;
       history.record(
-        origin === "adaptive" ? `Bascule auto → P${slot}` : `Changement vers P${slot}`,
+        origin === "adaptive"
+          ? t(`Bascule auto → P${slot}`, `Automatic switch → P${slot}`)
+          : t(`Changement vers P${slot}`, `Switch to P${slot}`),
         workingConfig
       );
       const next = clampConfigToProfile(target.config, hardware);
@@ -345,8 +355,14 @@ export function App() {
       pushToast(
         origin === "adaptive" ? "success" : "info",
         origin === "adaptive"
-          ? `Mode intelligent → P${slot} « ${target.name} »`
-          : `Profil P${slot} « ${target.name} » activé`,
+          ? t(
+              `Mode intelligent → P${slot} « ${target.name} »`,
+              `Smart mode → P${slot} “${profileDisplayName(target, locale)}”`
+            )
+          : t(
+              `Profil P${slot} « ${target.name} » activé`,
+              `Profile P${slot} “${profileDisplayName(target, locale)}” activated`
+            ),
         note ?? `${next.cpuFreqCapMhz} MHz · PL1 ${next.cpuPl1Watts} W · ${next.displayRefreshHz} Hz`,
         origin === "adaptive"
       );
@@ -391,7 +407,11 @@ export function App() {
     const entry = history.undo(workingConfig);
     if (!entry) return;
     setWorkingConfig({ ...entry.snapshot });
-    pushToast("info", `Annulé : ${entry.label}`, "Ctrl+Y pour rétablir si besoin.");
+    pushToast(
+      "info",
+      t(`Annulé : ${entry.label}`, `Undone: ${entry.label}`),
+      t("Ctrl+Y pour rétablir si besoin.", "Ctrl+Y to redo if needed.")
+    );
     appendLog("Undo", `rollback_ui("${entry.label}")`, undefined, 42);
   }, [history, workingConfig, pushToast, appendLog]);
 
@@ -399,7 +419,7 @@ export function App() {
     const entry = history.redo(workingConfig);
     if (!entry) return;
     setWorkingConfig({ ...entry.snapshot });
-    pushToast("info", `Rétabli : ${entry.label}`);
+    pushToast("info", t(`Rétabli : ${entry.label}`, `Redone: ${entry.label}`));
     appendLog("Redo", `redo_ui("${entry.label}")`, undefined, 42);
   }, [history, workingConfig, pushToast, appendLog]);
 
@@ -408,8 +428,11 @@ export function App() {
     if (blocking.length > 0) {
       pushToast(
         "error",
-        "Sauvegarde bloquée par l'audit de sûreté",
-        `${blocking.length} anomalie(s) critique(s) : ${blocking[0].title}.`
+        t("Sauvegarde bloquée par l'audit de sûreté", "Save blocked by the safety audit"),
+        t(
+          `${blocking.length} anomalie(s) critique(s) : ${blocking[0].title}.`,
+          `${blocking.length} critical issue(s): ${blocking[0].title}.`
+        )
       );
       return;
     }
@@ -419,7 +442,14 @@ export function App() {
       prev.map((p) => (p.id === activeSlot ? { ...p, config: { ...clamped }, updatedAt: ts } : p))
     );
     setWorkingConfig(clamped);
-    pushToast("success", `Profil P${activeSlot} enregistré`, `« ${activeProfile.name} » persisté localement.`);
+    pushToast(
+      "success",
+      t(`Profil P${activeSlot} enregistré`, `Profile P${activeSlot} saved`),
+      t(
+        `« ${activeProfile.name} » persisté localement.`,
+        `“${profileDisplayName(activeProfile, locale)}” persisted locally.`
+      )
+    );
     appendLog(
       "Config",
       `ConfigRepository::save_atomic("%APPDATA%\\EcoClock\\profiles.toml") [Slot P${activeSlot}]`,
@@ -430,12 +460,12 @@ export function App() {
 
   const handleRenameSlot = (slot: ProfileSlotId, newName: string) => {
     setProfiles((prev) => prev.map((p) => (p.id === slot ? { ...p, name: newName } : p)));
-    pushToast("success", `Profil P${slot} renommé`, newName);
+    pushToast("success", t(`Profil P${slot} renommé`, `Profile P${slot} renamed`), newName);
     appendLog("Config", `RenameProfile(P${slot} -> "${newName}")`, undefined, 120);
   };
 
   const handleResetDefaults = () => {
-    history.record("Réinitialisation des 5 profils", workingConfig);
+    history.record(t("Réinitialisation des 5 profils", "Reset of the 5 profiles"), workingConfig);
     const fresh = DEFAULT_PROFILES.map((p) => ({
       ...p,
       config: clampConfigToProfile({ ...p.config }, hardware),
@@ -443,7 +473,12 @@ export function App() {
     setProfiles(fresh);
     setActiveSlot(1);
     setWorkingConfig({ ...fresh[0].config });
-    pushToast("warning", "5 profils d'usine restaurés", "Bornés au profil matériel actif.", true);
+    pushToast(
+      "warning",
+      t("5 profils d'usine restaurés", "5 factory profiles restored"),
+      t("Bornés au profil matériel actif.", "Clamped to the active hardware profile."),
+      true
+    );
     appendLog("Config", "ResetDefaultFiveProfiles() + PowerSetActiveScheme(P1)", undefined, 1510);
   };
 
@@ -457,8 +492,11 @@ export function App() {
 
     pushToast(
       "success",
-      "profiles.toml exporté (schéma Rust 1:1)",
-      "Copiable tel quel dans %APPDATA%\\EcoClock\\profiles.toml."
+      t("profiles.toml exporté (schéma Rust 1:1)", "profiles.toml exported (Rust schema 1:1)"),
+      t(
+        "Copiable tel quel dans %APPDATA%\\EcoClock\\profiles.toml.",
+        "Ready to copy into %APPDATA%\\EcoClock\\profiles.toml."
+      )
     );
     appendLog("Config", "ExportToml(profiles.toml — compatible ProfileStore Rust)", undefined, 95);
   };
@@ -468,8 +506,11 @@ export function App() {
     downloadText(`ecoclock-p${activeSlot}.ps1`, script, "text/plain;charset=utf-8");
     pushToast(
       "success",
-      `Script ecoclock-p${activeSlot}.ps1 exporté`,
-      "Inclut la sauvegarde automatique du plan initial et l'option -Restore."
+      t(`Script ecoclock-p${activeSlot}.ps1 exporté`, `ecoclock-p${activeSlot}.ps1 script exported`),
+      t(
+        "Inclut la sauvegarde automatique du plan initial et l'option -Restore.",
+        "Includes automatic backup of the original plan and the -Restore option."
+      )
     );
     appendLog("Export", `ExportPowerShellScript(ecoclock-p${activeSlot}.ps1 + -Restore)`, undefined, 115);
   };
@@ -489,7 +530,14 @@ export function App() {
       JSON.stringify(bundle, null, 2),
       "application/json;charset=utf-8"
     );
-    pushToast("success", "Sauvegarde JSON complète exportée", "5 profils, autostart, matériel et règles adaptatives.");
+    pushToast(
+      "success",
+      t("Sauvegarde JSON complète exportée", "Full JSON backup exported"),
+      t(
+        "5 profils, autostart, matériel et règles adaptatives.",
+        "5 profiles, autostart, hardware and adaptive rules."
+      )
+    );
     appendLog("Config", "ExportBackupJson(schema=v2)", undefined, 105);
   };
 
@@ -499,10 +547,17 @@ export function App() {
     if (!trimmed.startsWith("{")) {
       const tomlBundle = parseProfilesToml(trimmed);
       if (!tomlBundle) {
-        pushToast("error", "Fichier TOML invalide", "Attendu : 5 sections [[profiles]] au format EcoClock-rs.");
+        pushToast(
+          "error",
+          t("Fichier TOML invalide", "Invalid TOML file"),
+          t(
+            "Attendu : 5 sections [[profiles]] au format EcoClock-rs.",
+            "Expected: 5 [[profiles]] sections in EcoClock-rs format."
+          )
+        );
         return;
       }
-      history.record("Import profiles.toml", workingConfig);
+      history.record(t("Import profiles.toml", "Import profiles.toml"), workingConfig);
       const cleanProfiles = sanitizeProfiles(tomlBundle.profiles);
       const nextSlot = sanitizeSlot(tomlBundle.activeSlot);
       setProfiles(cleanProfiles);
@@ -520,7 +575,14 @@ export function App() {
           },
         }));
       }
-      pushToast("success", "profiles.toml importé et validé", "Les 5 profils et l'autostart ont été chargés.");
+      pushToast(
+        "success",
+        t("profiles.toml importé et validé", "profiles.toml imported and validated"),
+        t(
+          "Les 5 profils et l'autostart ont été chargés.",
+          "All 5 profiles and the autostart settings were loaded."
+        )
+      );
       appendLog("Config", "ImportProfilesToml(validated=OK)", undefined, 195);
       return;
     }
@@ -528,10 +590,14 @@ export function App() {
     try {
       const parsed = JSON.parse(trimmed) as Record<string, unknown>;
       if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.profiles)) {
-        pushToast("error", "Fichier JSON invalide", "Tableau `profiles` (5 profils) introuvable.");
+        pushToast(
+          "error",
+          t("Fichier JSON invalide", "Invalid JSON file"),
+          t("Tableau `profiles` (5 profils) introuvable.", "`profiles` array (5 profiles) not found.")
+        );
         return;
       }
-      history.record("Import sauvegarde JSON", workingConfig);
+      history.record(t("Import sauvegarde JSON", "Import JSON backup"), workingConfig);
       const nextHw =
         typeof parsed.hardwareId === "string" ? getHardwareProfile(parsed.hardwareId) : hardware;
       const cleanProfiles = sanitizeProfiles(parsed.profiles);
@@ -544,10 +610,18 @@ export function App() {
       );
       if (parsed.autostart) setAutostart(sanitizeAutostart(parsed.autostart));
       if (parsed.settings) updateSettings(() => sanitizeSettings(parsed.settings));
-      pushToast("success", "Sauvegarde JSON importée et validée", "Tous les champs ont été vérifiés et bornés.");
+      pushToast(
+        "success",
+        t("Sauvegarde JSON importée et validée", "JSON backup imported and validated"),
+        t("Tous les champs ont été vérifiés et bornés.", "Every field was checked and clamped.")
+      );
       appendLog("Config", "ImportBackupJson(validated=OK)", undefined, 210);
     } catch {
-      pushToast("error", "Échec de lecture du fichier", "Format attendu : .json ou profiles.toml valide.");
+      pushToast(
+        "error",
+        t("Échec de lecture du fichier", "Could not read the file"),
+        t("Format attendu : .json ou profiles.toml valide.", "Expected: a valid .json file or profiles.toml.")
+      );
     }
   };
 
@@ -561,7 +635,7 @@ export function App() {
       setUacOpen(true);
       return;
     }
-    history.record(`Réglage ${String(key)}`, workingConfig);
+    history.record(t(`Réglage ${String(key)}`, `Setting ${String(key)}`), workingConfig);
     setWorkingConfig((prev) => clampConfigToProfile({ ...prev, [key]: value }, hardware));
     appendLog("HW", apiDesc);
   };
@@ -569,7 +643,14 @@ export function App() {
   const handleApproveUac = () => {
     setPrivilege("admin");
     setUacOpen(false);
-    pushToast("success", "Jeton Administrateur accordé (UAC)", "NVML GPU, NVMe APST, SATA DIPM, PL1, Core Parking et EEE débloqués.");
+    pushToast(
+      "success",
+      t("Jeton Administrateur accordé (UAC)", "Administrator token granted (UAC)"),
+      t(
+        "NVML GPU, NVMe APST, SATA DIPM, PL1, Core Parking et EEE débloqués.",
+        "NVML GPU, NVMe APST, SATA DIPM, PL1, Core Parking and EEE unlocked."
+      )
+    );
     appendLog(
       "UAC",
       `ShellExecuteExW(L"runas", "--apply-profile ${activeSlot}") => TokenElevation=1`,
@@ -583,7 +664,11 @@ export function App() {
     if (autostart.method === "task_scheduler_admin") {
       setAutostart((prev) => ({ ...prev, method: "hkcu_registry" }));
     }
-    pushToast("info", "Retour en mode Utilisateur standard", "Seuls les leviers User-space restent appliqués.");
+    pushToast(
+      "info",
+      t("Retour en mode Utilisateur standard", "Back to standard user mode"),
+      t("Seuls les leviers User-space restent appliqués.", "Only user-space levers stay applied.")
+    );
     appendLog("Token", "DropToStandardUser (asInvoker)", "user", 110);
   };
 
@@ -600,18 +685,20 @@ export function App() {
         : `RegSetValueExW(HKCU\\...\\Run, "EcoClockRs" -> P${clean.bootProfileId})`;
     pushToast(
       "success",
-      clean.enabled ? "Démarrage Windows synchronisé" : "Démarrage Windows désactivé",
-      clean.enabled ? dest : "Entrée HKCU et tâche planifiée nettoyées."
+      clean.enabled
+        ? t("Démarrage Windows synchronisé", "Windows startup synchronized")
+        : t("Démarrage Windows désactivé", "Windows startup disabled"),
+      clean.enabled ? dest : t("Entrée HKCU et tâche planifiée nettoyées.", "HKCU entry and scheduled task removed.")
     );
     appendLog("Autostart", clean.enabled ? dest : "Autostart supprimé (HKCU + Task)", undefined, 420);
   };
 
   const handleApplyProposal = (p: OptimizationProposal) => {
-    history.record(`Optimisation « ${p.title.slice(0, 36)}… »`, workingConfig);
+    history.record(t(`Optimisation « ${p.title.slice(0, 36)}… »`, `Optimization “${p.title.slice(0, 36)}…”`), workingConfig);
     setWorkingConfig((prev) => clampConfigToProfile({ ...prev, ...p.patch }, hardware));
     pushToast(
       "success",
-      "Optimisation appliquée",
+      t("Optimisation appliquée", "Optimization applied"),
       `−${p.savedWatts} W · +${p.latencyDeltaMs.toFixed(2)} ms (${p.latencyContext})`,
       true
     );
@@ -621,19 +708,29 @@ export function App() {
   const handleApplyAllProposals = (onlyUserSafe: boolean) => {
     const applicable = onlyUserSafe ? proposals.filter((p) => !p.requiresAdmin) : proposals;
     if (applicable.length === 0) return;
-    history.record(onlyUserSafe ? "Optimisations User" : "Config Pareto complète", workingConfig);
+    history.record(
+      onlyUserSafe
+        ? t("Optimisations User", "User-level optimizations")
+        : t("Config Pareto complète", "Full Pareto configuration"),
+      workingConfig
+    );
     setWorkingConfig((prev) => {
       let merged = { ...prev };
       for (const p of applicable) merged = { ...merged, ...p.patch };
       return clampConfigToProfile(merged, hardware);
     });
-    pushToast("success", `${applicable.length} optimisations appliquées`, "Annulable via Ctrl+Z ; sauvegardez via Ctrl+S.", true);
+    pushToast(
+      "success",
+      t(`${applicable.length} optimisations appliquées`, `${applicable.length} optimizations applied`),
+      t("Annulable via Ctrl+Z ; sauvegardez via Ctrl+S.", "Undo with Ctrl+Z; save with Ctrl+S."),
+      true
+    );
     appendLog("Optimizer", `ApplyAllPareto(${applicable.length}, goal=${optimizerGoal})`, undefined, 1940);
   };
 
   const handleApplySelection = (selected: OptimizationProposal[]) => {
     if (selected.length === 0) return;
-    history.record(`Sélection budget ${budgetMs} ms`, workingConfig);
+    history.record(t(`Sélection budget ${budgetMs} ms`, `Budget selection ${budgetMs} ms`), workingConfig);
     setWorkingConfig((prev) => {
       let merged = { ...prev };
       for (const p of selected) merged = { ...merged, ...p.patch };
@@ -641,8 +738,14 @@ export function App() {
     });
     pushToast(
       "success",
-      `Sélection optimale appliquée (${selected.length})`,
-      `Budget +${budgetMs.toFixed(1)} ms respecté — Ctrl+S pour enregistrer.`,
+      t(
+        `Sélection optimale appliquée (${selected.length})`,
+        `Optimal selection applied (${selected.length})`
+      ),
+      t(
+        `Budget +${budgetMs.toFixed(1)} ms respecté — Ctrl+S pour enregistrer.`,
+        `+${budgetMs.toFixed(1)} ms budget respected — Ctrl+S to save.`
+      ),
       true
     );
     appendLog("Optimizer", `ApplyBudgetPlan(${selected.length}, budget=${budgetMs}ms)`, undefined, 1720);
@@ -656,42 +759,68 @@ export function App() {
     if (!issue.fix) return;
     history.record(`Correctif « ${issue.title.slice(0, 36)}… »`, workingConfig);
     setWorkingConfig((prev) => clampConfigToProfile({ ...prev, ...issue.fix }, hardware));
-    pushToast("success", "Constat corrigé", issue.fixLabel ?? issue.title, true);
+    pushToast(
+      "success",
+      t("Constat corrigé", "Issue fixed"),
+      issue.fixLabel ?? issue.title,
+      true
+    );
     appendLog("Audit", `FixIssue("${issue.id}")`, undefined, 140);
   };
 
   const handleFixAllIssues = () => {
     const fixable = issues.filter((i) => i.fix);
     if (fixable.length === 0) return;
-    history.record("Correction groupée d'audit", workingConfig);
+    history.record(t("Correction groupée d'audit", "Bulk audit fix"), workingConfig);
     setWorkingConfig((prev) => {
       let merged = { ...prev };
       for (const i of fixable) merged = { ...merged, ...i.fix };
       return clampConfigToProfile(merged, hardware);
     });
-    pushToast("success", `${fixable.length} constats corrigés`, "Configuration alignée sur les bornes constructeur.", true);
+    pushToast(
+      "success",
+      t(`${fixable.length} constats corrigés`, `${fixable.length} issues fixed`),
+      t(
+        "Configuration alignée sur les bornes constructeur.",
+        "Configuration aligned with vendor limits."
+      ),
+      true
+    );
     appendLog("Audit", `FixAll(${fixable.length} règles)`, undefined, 260);
   };
 
   const handleHardwareChange = (profile: HardwareProfile) => {
-    history.record(`Matériel ${profile.label}`, workingConfig);
+    history.record(t(`Matériel ${profile.label}`, `Hardware ${profile.label}`), workingConfig);
     setHardwareId(profile.id);
     setWorkingConfig((prev) => clampConfigToProfile(prev, profile));
     setHardwareOpen(false);
     pushToast(
       "info",
-      `Matériel : ${profile.label}`,
-      `${profile.cpuCores} cœurs · PL1 ${profile.cpuPl1MinW}–${profile.cpuPl1MaxW} W · ${
-        profile.hasDedicatedGpu ? `GPU ${profile.gpuTdpW} W` : "iGPU seul"
-      }`
+      t(`Matériel : ${profile.label}`, `Hardware: ${profile.label}`),
+      t(
+        `${profile.cpuCores} cœurs · PL1 ${profile.cpuPl1MinW}–${profile.cpuPl1MaxW} W · ${
+          profile.hasDedicatedGpu ? `GPU ${profile.gpuTdpW} W` : "iGPU seul"
+        }`,
+        `${profile.cpuCores} cores · PL1 ${profile.cpuPl1MinW}–${profile.cpuPl1MaxW} W · ${
+          profile.hasDedicatedGpu ? `GPU ${profile.gpuTdpW} W` : "iGPU only"
+        }`
+      )
     );
     appendLog("WMI/NVML", `DetectHardware("${profile.id}") -> bornes appliquées`, undefined, 2800);
   };
 
   const handleEmergencyRestore = () => {
-    history.record("Restauration Stock Windows", workingConfig);
+    history.record(t("Restauration Stock Windows", "Windows Stock restore"), workingConfig);
     setWorkingConfig(clampConfigToProfile({ ...STOCK_BASELINE_CONFIG }, hardware));
-    pushToast("warning", "État Windows d'origine restauré", "Toutes les limites ont été relâchées (Ctrl+Z pour annuler).", true);
+    pushToast(
+      "warning",
+      t("État Windows d'origine restauré", "Original Windows state restored"),
+      t(
+        "Toutes les limites ont été relâchées (Ctrl+Z pour annuler).",
+        "Every limit was released (Ctrl+Z to undo)."
+      ),
+      true
+    );
     appendLog("Safety", "RollbackGuard::restore_baseline() — valeurs Stock rétablies", undefined, 1480);
   };
 
@@ -713,8 +842,11 @@ export function App() {
     setLastBenchInfo({ measuredHostMs: res.measuredHostMs, opsPerSec: res.opsPerSec, ranAt });
     pushToast(
       "success",
-      "Micro-benchmark réel exécuté",
-      `${res.measuredHostMs} ms hôte · ${(res.opsPerSec / 1e6).toFixed(1)} Mops/s · facteur ×${res.calibrationScale}`
+      t("Micro-benchmark réel exécuté", "Real micro-benchmark executed"),
+      t(
+        `${res.measuredHostMs} ms hôte · ${(res.opsPerSec / 1e6).toFixed(1)} Mops/s · facteur ×${res.calibrationScale}`,
+        `${res.measuredHostMs} ms host · ${(res.opsPerSec / 1e6).toFixed(1)} Mops/s · factor ×${res.calibrationScale}`
+      )
     );
     appendLog(
       "Bench",
@@ -738,7 +870,14 @@ export function App() {
       cost,
     });
     downloadText(`ecoclock-rapport-${new Date().toISOString().slice(0, 10)}.md`, markdown);
-    pushToast("success", "Rapport Markdown exporté", "Mesures Avant/Après (W, °C, dBA, ms), Pareto & protocole inclus.");
+    pushToast(
+      "success",
+      t("Rapport Markdown exporté", "Markdown report exported"),
+      t(
+        "Mesures Avant/Après (W, °C, dBA, ms), Pareto & protocole inclus.",
+        "Before/after measurements (W, °C, dBA, ms), Pareto and protocol included."
+      )
+    );
     appendLog("Report", "ExportMarkdownAudit(OK)", undefined, 120);
   };
 
@@ -747,8 +886,13 @@ export function App() {
     updateSettings((s) => ({ ...s, tooltips: next }));
     pushToast(
       "info",
-      next ? "Infobulles techniques activées" : "Infobulles techniques masquées",
-      "Raccourci T ou bouton de barre supérieure pour rebasculer à tout moment."
+      next
+        ? t("Infobulles techniques activées", "Technical tooltips enabled")
+        : t("Infobulles techniques masquées", "Technical tooltips hidden"),
+      t(
+        "Raccourci T ou bouton de barre supérieure pour rebasculer à tout moment.",
+        "Shortcut T or the top-bar button toggles them at any time."
+      )
     );
   }, [settings.tooltips, pushToast]);
 
@@ -777,7 +921,7 @@ export function App() {
   return (
     <div className="min-h-screen bg-[#0A0D12] text-slate-100 flex flex-col">
       <a href="#main-content" className="skip-link">
-        Aller au contenu principal
+        {t("Aller au contenu principal", "Skip to main content")}
       </a>
       <div className="max-w-[1380px] w-full mx-auto flex-1 flex flex-col sm:my-3 sm:rounded-xl sm:border sm:border-slate-800/90 bg-[#0F131A] shadow-2xl shadow-black/70 overflow-hidden">
         {/* 1. BARRE DE TITRE WINDOWS 11 */}
@@ -800,33 +944,47 @@ export function App() {
                     title={adaptiveCtrl.status.reason}
                   >
                     <Wand2 className="w-2.5 h-2.5" />
-                    Auto:{settings.adaptive.mode === "auto" ? "ON" : "Sugg."} ({adaptiveCtrl.status.target})
+                    Auto:{settings.adaptive.mode === "auto" ? "ON" : t("Sugg.", "Sug.")} ({adaptiveCtrl.status.target})
                   </button>
                 )}
               </div>
               <p className="text-[10.5px] text-slate-400 hidden sm:block">
-                Underclocking multi-composants sûr · Économie d'électricité, température & silence
+                {t(
+                  "Underclocking multi-composants sûr · Économie d'électricité, température & silence",
+                  "Safe multi-component underclocking · Power, temperature & noise savings"
+                )}
               </p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-1.5">
+            {/* Langue de l'interface */}
+            <LanguageToggle />
+
             {/* Toggle explicite des infobulles (visible sur tous les écrans) */}
             <button
               type="button"
               role="switch"
               aria-checked={settings.tooltips}
-              aria-label="Activer ou désactiver les infobulles techniques"
+              aria-label={t(
+                "Activer ou désactiver les infobulles techniques",
+                "Enable or disable technical tooltips"
+              )}
               onClick={handleToggleTooltips}
               className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition-colors ${
                 settings.tooltips
                   ? "bg-sky-500/12 border-sky-500/40 text-sky-200 hover:bg-sky-500/20"
                   : "bg-slate-800/80 border-slate-700 text-slate-400 hover:text-slate-200"
               }`}
-              title="Activer ou désactiver les infobulles détaillées (raccourci T)"
+              title={t(
+                "Activer ou désactiver les infobulles détaillées (raccourci T)",
+                "Enable or disable detailed tooltips (shortcut T)"
+              )}
             >
               <HelpCircle className="w-3.5 h-3.5" />
-              <span>Bulles : {settings.tooltips ? "ON" : "OFF"}</span>
+              <span>
+                {t("Bulles", "Tips")} : {settings.tooltips ? "ON" : "OFF"}
+              </span>
             </button>
 
             {/* Matériel de référence */}
@@ -834,7 +992,10 @@ export function App() {
               type="button"
               onClick={() => setHardwareOpen(true)}
               className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800/70 hover:bg-slate-700 border border-slate-700 text-xs font-medium text-slate-200 transition-colors cursor-pointer max-w-[200px]"
-              title="Choisir le matériel de référence et ses bornes constructeur (M)"
+              title={t(
+                "Choisir le matériel de référence et ses bornes constructeur (M)",
+                "Choose the reference hardware and its vendor limits (M)"
+              )}
             >
               <Cpu className="w-3.5 h-3.5 text-sky-400 shrink-0" />
               <span className="truncate hidden sm:inline">{hardware.label}</span>
@@ -846,8 +1007,12 @@ export function App() {
                 type="button"
                 onClick={handleUndo}
                 disabled={!history.canUndo}
-                aria-label={`Annuler (${history.past.length})`}
-                title={history.lastUndoLabel ? `Annuler : ${history.lastUndoLabel} (Ctrl+Z)` : "Rien à annuler"}
+                aria-label={`${t("Annuler", "Undo")} (${history.past.length})`}
+                title={
+                  history.lastUndoLabel
+                    ? `${t("Annuler", "Undo")} : ${history.lastUndoLabel} (Ctrl+Z)`
+                    : t("Rien à annuler", "Nothing to undo")
+                }
                 className="inline-flex items-center gap-1 px-2 py-1.5 hover:bg-slate-700 disabled:opacity-35 disabled:cursor-not-allowed text-xs text-slate-300 cursor-pointer"
               >
                 <Undo2 className="w-3.5 h-3.5" />
@@ -857,8 +1022,12 @@ export function App() {
                 type="button"
                 onClick={handleRedo}
                 disabled={!history.canRedo}
-                aria-label="Rétablir"
-                title={history.lastRedoLabel ? `Rétablir : ${history.lastRedoLabel} (Ctrl+Y)` : "Rien à rétablir"}
+                aria-label={t("Rétablir", "Redo")}
+                title={
+                  history.lastRedoLabel
+                    ? `${t("Rétablir", "Redo")} : ${history.lastRedoLabel} (Ctrl+Y)`
+                    : t("Rien à rétablir", "Nothing to redo")
+                }
                 className="inline-flex items-center px-1.5 py-1.5 border-l border-slate-700 hover:bg-slate-700 disabled:opacity-35 disabled:cursor-not-allowed text-xs text-slate-300 cursor-pointer"
               >
                 <Redo2 className="w-3.5 h-3.5" />
@@ -872,7 +1041,10 @@ export function App() {
                   type="button"
                   onClick={() => setUacOpen(true)}
                   className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-500/12 hover:bg-amber-500/20 border border-emerald-500/35 hover:border-amber-500/50 text-xs font-medium text-emerald-200 hover:text-amber-200 transition-colors cursor-pointer"
-                  title="Lancé en utilisateur standard (asInvoker). Cliquer pour demander les droits Administrateur (UAC)."
+                  title={t(
+                    "Lancé en utilisateur standard (asInvoker). Cliquer pour demander les droits Administrateur (UAC).",
+                    "Running as a standard user (asInvoker). Click to request Administrator rights (UAC)."
+                  )}
                 >
                   <Shield className="w-3.5 h-3.5 text-emerald-400" />
                   <span>User</span>
@@ -885,7 +1057,10 @@ export function App() {
                   type="button"
                   onClick={handleDropToUser}
                   className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/45 text-xs font-semibold text-amber-200 transition-colors cursor-pointer"
-                  title="Jeton Administrateur UAC actif. Cliquer pour revenir en mode User."
+                  title={t(
+                    "Jeton Administrateur UAC actif. Cliquer pour revenir en mode User.",
+                    "UAC Administrator token active. Click to return to User mode."
+                  )}
                 >
                   <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
                   <span>Admin</span>
@@ -917,7 +1092,10 @@ export function App() {
                 type="button"
                 onClick={handleEmergencyRestore}
                 className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700 text-xs text-slate-300 hover:text-white transition-colors cursor-pointer"
-                title="Restaurer immédiatement 100 % des paramètres Windows d'origine"
+                title={t(
+                  "Restaurer immédiatement 100 % des paramètres Windows d'origine",
+                  "Immediately restore 100% of the original Windows settings"
+                )}
               >
                 <RotateCcw className="w-3.5 h-3.5 text-emerald-400" />
                 <span className="hidden xl:inline">Stock</span>
@@ -948,41 +1126,52 @@ export function App() {
 
         {/* 3. NAVIGATION DES ONGLETS + SCÉNARIO DE CHARGE */}
         <div className="bg-[#0E1219] border-b border-slate-800 px-4 py-2 flex flex-wrap items-center justify-between gap-2">
-          <nav className="flex flex-wrap items-center gap-1" aria-label="Vues principales">
+          <nav
+            className="flex flex-wrap items-center gap-1"
+            aria-label={t("Vues principales", "Main views")}
+          >
             {(
               [
-                { id: "dashboard" as const, label: "Réglages", icon: Sliders },
-                { id: "compare" as const, label: "Avant / Après & ms", icon: ArrowLeftRight },
+                { id: "dashboard" as const, label: t("Réglages", "Settings"), icon: Sliders },
+                {
+                  id: "compare" as const,
+                  label: t("Avant / Après & ms", "Before / After & ms"),
+                  icon: ArrowLeftRight,
+                },
                 {
                   id: "optimizer" as const,
-                  label: "Config Optimisée",
+                  label: t("Config Optimisée", "Optimized config"),
                   icon: Sparkles,
                   count: proposals.length,
                 },
                 {
                   id: "adaptive" as const,
-                  label: "Mode intelligent",
+                  label: t("Mode intelligent", "Smart mode"),
                   icon: Wand2,
                   dot: settings.adaptive.enabled,
                 },
-                { id: "profiles" as const, label: "5 Profils", icon: Layers },
+                { id: "profiles" as const, label: t("5 Profils", "5 Profiles"), icon: Layers },
                 {
                   id: "audit" as const,
-                  label: "Audit & Plan",
+                  label: t("Audit & Plan", "Audit & Plan"),
                   icon: ClipboardCheck,
                   count: issueCounts.critical + issueCounts.warning,
                 },
-                { id: "rust_source" as const, label: "Code Rust & .zip", icon: Code2 },
+                {
+                  id: "rust_source" as const,
+                  label: t("Code Rust & .zip", "Rust code & .zip"),
+                  icon: Code2,
+                },
               ] as const
-            ).map((t) => {
-              const Icon = t.icon;
-              const active = activeTab === t.id;
+            ).map((tab) => {
+              const Icon = tab.icon;
+              const active = activeTab === tab.id;
               return (
                 <button
-                  key={t.id}
+                  key={tab.id}
                   type="button"
                   aria-current={active ? "page" : undefined}
-                  onClick={() => setActiveTab(t.id)}
+                  onClick={() => setActiveTab(tab.id)}
                   className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
                     active
                       ? "bg-emerald-500/18 text-emerald-200 border border-emerald-500/45"
@@ -990,13 +1179,16 @@ export function App() {
                   }`}
                 >
                   <Icon className={`w-3.5 h-3.5 ${active ? "text-emerald-400" : "text-slate-500"}`} />
-                  <span>{t.label}</span>
-                  {"dot" in t && t.dot && (
-                    <span className="w-2 h-2 rounded-full bg-emerald-400" title="Mode intelligent actif" />
+                  <span>{tab.label}</span>
+                  {"dot" in tab && tab.dot && (
+                    <span
+                      className="w-2 h-2 rounded-full bg-emerald-400"
+                      title={t("Mode intelligent actif", "Smart mode active")}
+                    />
                   )}
-                  {"count" in t && t.count > 0 && (
+                  {"count" in tab && tab.count > 0 && (
                     <span className="font-mono text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-500 text-slate-950 font-bold">
-                      {t.count}
+                      {tab.count}
                     </span>
                   )}
                 </button>
@@ -1006,8 +1198,12 @@ export function App() {
 
           {activeTab !== "rust_source" && (
             <div className="flex items-center gap-1.5 text-[11px]">
-              <span className="text-slate-500 hidden xl:inline">Charge :</span>
-              <div className="inline-flex rounded-lg bg-[#141A24] border border-slate-800 p-0.5" role="group" aria-label="Scénario de charge">
+              <span className="text-slate-500 hidden xl:inline">{t("Charge :", "Load:")}</span>
+              <div
+                className="inline-flex rounded-lg bg-[#141A24] border border-slate-800 p-0.5"
+                role="group"
+                aria-label={t("Scénario de charge", "Workload scenario")}
+              >
                 {(Object.keys(WORKLOAD_META) as WorkloadMode[]).map((wm) => {
                   const active = workload === wm;
                   return (
@@ -1016,12 +1212,18 @@ export function App() {
                       type="button"
                       aria-pressed={active}
                       onClick={() => setWorkload(wm)}
-                      title={WORKLOAD_META[wm].description}
+                      title={
+                        locale === "en"
+                          ? WORKLOAD_META[wm].descriptionEn
+                          : WORKLOAD_META[wm].description
+                      }
                       className={`px-2 py-1 rounded-md text-[10.5px] font-medium transition-colors cursor-pointer ${
                         active ? "bg-slate-700 text-white shadow-sm" : "text-slate-400 hover:text-slate-200"
                       }`}
                     >
-                      {WORKLOAD_META[wm].shortLabel}
+                      {locale === "en"
+                        ? WORKLOAD_META[wm].shortLabelEn
+                        : WORKLOAD_META[wm].shortLabel}
                     </button>
                   );
                 })}
@@ -1039,12 +1241,19 @@ export function App() {
         <main id="main-content" tabIndex={-1} className="p-4 flex-1 outline-none">
           {activeTab === "dashboard" && (
             <div className="space-y-4">
+              <LocaleNotice scope="engine" />
               {issueCounts.critical > 0 && (
                 <div className="rounded-lg bg-rose-500/12 border border-rose-500/35 px-3.5 py-2 flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2 text-xs text-rose-100">
                     <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0" />
                     <span>
-                      <strong>{issueCounts.critical} anomalie(s) critique(s)</strong> : la sauvegarde du profil est bloquée jusqu'à correction.
+                      <strong>
+                        {t(
+                          `${issueCounts.critical} anomalie(s) critique(s)`,
+                          `${issueCounts.critical} critical issue(s)`
+                        )}
+                      </strong>{" "}
+                      : {t("la sauvegarde du profil est bloquée jusqu'à correction.", "profile saving is blocked until this is fixed.")}
                     </span>
                   </div>
                   <button
@@ -1052,7 +1261,7 @@ export function App() {
                     onClick={handleFixAllIssues}
                     className="px-2.5 py-1 rounded bg-rose-500 hover:bg-rose-400 text-slate-950 text-[11px] font-semibold cursor-pointer"
                   >
-                    Corriger automatiquement
+                    {t("Corriger automatiquement", "Fix automatically")}
                   </button>
                 </div>
               )}
@@ -1084,11 +1293,13 @@ export function App() {
           )}
 
           {activeTab === "compare" && (
-            <BeforeAfterView
+            <div>
+              <LocaleNotice />
+              <BeforeAfterView
               profiles={profiles}
               referenceSlot={referenceSlot}
               onChangeReferenceSlot={setReferenceSlot}
-              activeLabel={`P${activeSlot} ${activeProfile.name}${isDirty ? "*" : ""}`}
+              activeLabel={`P${activeSlot} ${profileDisplayName(activeProfile, locale)}${isDirty ? "*" : ""}`}
               beforeTel={beforeTel}
               afterTel={afterTel}
               benchmarks={benchmarks}
@@ -1097,15 +1308,18 @@ export function App() {
               cost={cost}
               onChangeCost={setCost}
               hardware={hardware}
-              activeProfileName={`P${activeSlot} ${activeProfile.name}`}
+              activeProfileName={`P${activeSlot} ${profileDisplayName(activeProfile, locale)}`}
               benchRuns={benchRuns}
               onExportReport={handleExportReport}
-              onExportPs1={handleExportPs1}
-            />
+                onExportPs1={handleExportPs1}
+              />
+            </div>
           )}
 
           {activeTab === "optimizer" && (
-            <OptimizerView
+            <div>
+              <LocaleNotice />
+              <OptimizerView
               goal={optimizerGoal}
               onChangeGoal={setOptimizerGoal}
               proposals={proposals}
@@ -1117,13 +1331,16 @@ export function App() {
               onChangeBudgetMs={setBudgetMs}
               onApplyOne={handleApplyProposal}
               onApplyAll={handleApplyAllProposals}
-              onApplySelection={handleApplySelection}
-              onRequestAdmin={() => setUacOpen(true)}
-            />
+                onApplySelection={handleApplySelection}
+                onRequestAdmin={() => setUacOpen(true)}
+              />
+            </div>
           )}
 
           {activeTab === "adaptive" && (
-            <AdaptivePanel
+            <div>
+              <LocaleNotice />
+              <AdaptivePanel
               settings={settings}
               profiles={profiles}
               hardware={hardware}
@@ -1155,12 +1372,15 @@ export function App() {
               onClearSnooze={adaptiveCtrl.clearSnooze}
               onApplySuggestion={adaptiveCtrl.applySuggestion}
               onClearLog={adaptiveCtrl.clearLog}
-              onResetSavings={adaptiveCtrl.resetSavings}
-            />
+                onResetSavings={adaptiveCtrl.resetSavings}
+              />
+            </div>
           )}
 
           {activeTab === "profiles" && (
-            <ProfileCompareView
+            <div>
+              <LocaleNotice />
+              <ProfileCompareView
               profiles={profiles}
               activeSlot={activeSlot}
               bootProfileId={autostart.bootProfileId}
@@ -1170,20 +1390,24 @@ export function App() {
               privilege={privilege}
               cost={cost}
               onApplySlot={handleSelectSlot}
-              onSetBootSlot={(slot) =>
-                handleAutostartChange({ ...autostart, enabled: true, bootProfileId: slot })
-              }
-            />
+                onSetBootSlot={(slot) =>
+                  handleAutostartChange({ ...autostart, enabled: true, bootProfileId: slot })
+                }
+              />
+            </div>
           )}
 
           {activeTab === "audit" && (
-            <AuditPlanView
+            <div>
+              <LocaleNotice />
+              <AuditPlanView
               issues={issues}
               hardware={hardware}
               rustFileCount={RUST_PROJECT_FILES.length + RUST_EXTRA_FILES.length + 1}
               onOpenRust={() => setActiveTab("rust_source")}
-              onOpenSafetyFix={() => setActiveTab("dashboard")}
-            />
+                onOpenSafetyFix={() => setActiveTab("dashboard")}
+              />
+            </div>
           )}
 
           {activeTab === "rust_source" && (
@@ -1202,24 +1426,26 @@ export function App() {
           <div className="flex flex-wrap items-center gap-3">
             <span className="inline-flex items-center gap-1 text-emerald-400">
               <ShieldCheck className="w-3.5 h-3.5" />
-              0 driver Ring-0 · HVCI OK
+              {t("0 driver Ring-0 · HVCI OK", "0 Ring-0 driver · HVCI OK")}
             </span>
             <span className="text-slate-600">|</span>
             <span>
-              Jeton :{" "}
+              {t("Jeton :", "Token:")}{" "}
               <strong className={privilege === "admin" ? "text-amber-300" : "text-slate-200"}>
                 {privilege === "admin" ? "ElevatedAdmin" : "StandardUser"}
               </strong>
             </span>
             <span className="hidden md:inline text-slate-600">|</span>
             <span className="hidden md:inline">
-              Infobulles :{" "}
+              {t("Infobulles :", "Tooltips:")}{" "}
               <button
                 type="button"
                 onClick={handleToggleTooltips}
                 className="text-sky-300 hover:underline cursor-pointer"
               >
-                {settings.tooltips ? "actives (T)" : "masquées (T)"}
+                {settings.tooltips
+                  ? t("actives (T)", "on (T)")
+                  : t("masquées (T)", "hidden (T)")}
               </button>
             </span>
           </div>
@@ -1234,7 +1460,10 @@ export function App() {
                   ? "border-emerald-500/35 bg-emerald-500/10 text-emerald-300"
                   : "border-slate-700 bg-slate-800 text-slate-400"
               }`}
-              title="Pause / reprise de la télémétrie 1 Hz (P)"
+              title={t(
+                "Pause / reprise de la télémétrie 1 Hz (P)",
+                "Pause / resume 1 Hz telemetry (P)"
+              )}
             >
               {liveEnabled ? <Pause className="w-2.5 h-2.5" /> : <Play className="w-2.5 h-2.5" />}
               {liveEnabled ? "Live 1 Hz" : "Pause"}
@@ -1243,16 +1472,16 @@ export function App() {
               type="button"
               onClick={() => setShortcutsOpen(true)}
               className="inline-flex items-center gap-1 text-slate-300 hover:text-white cursor-pointer"
-              title="Afficher les raccourcis clavier (?)"
+              title={t("Afficher les raccourcis clavier (?)", "Show keyboard shortcuts (?)")}
             >
-              <Keyboard className="w-3 h-3" /> Raccourcis
+              <Keyboard className="w-3 h-3" /> {t("Raccourcis", "Shortcuts")}
             </button>
             <button
               type="button"
               onClick={() => setActiveTab("rust_source")}
               className="text-sky-400 hover:text-sky-300 underline underline-offset-2 cursor-pointer"
             >
-              Exporter ecoclock-rs (.zip)
+              {t("Exporter ecoclock-rs (.zip)", "Download ecoclock-rs (.zip)")}
             </button>
           </div>
         </footer>

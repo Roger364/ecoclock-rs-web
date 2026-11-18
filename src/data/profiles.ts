@@ -203,7 +203,17 @@ export const DEFAULT_AUTOSTART: AutostartConfig = {
 
 export const WORKLOAD_META: Record<
   WorkloadMode,
-  { label: string; shortLabel: string; cpuLoad: number; gpuLoad: number; ioRate: number; description: string }
+  {
+    label: string;
+    shortLabel: string;
+    cpuLoad: number;
+    gpuLoad: number;
+    ioRate: number;
+    description: string;
+    labelEn: string;
+    shortLabelEn: string;
+    descriptionEn: string;
+  }
 > = {
   idle: {
     label: "Repos / Bureau calme",
@@ -212,6 +222,9 @@ export const WORKLOAD_META: Record<
     gpuLoad: 0.03,
     ioRate: 0.05,
     description: "Bureau Windows 11, éditeur de texte, lecture PDF, messagerie en fond (6% CPU, 3% GPU).",
+    labelEn: "Idle / Quiet desktop",
+    shortLabelEn: "Idle",
+    descriptionEn: "Windows 11 desktop, text editor, PDF reading, background messaging (6% CPU, 3% GPU).",
   },
   office: {
     label: "Productivité / Web / Dev",
@@ -220,6 +233,9 @@ export const WORKLOAD_META: Record<
     gpuLoad: 0.14,
     ioRate: 0.25,
     description: "Navigateur 20 onglets, vidéo 4K, IDE VS Code, appels visio (28% CPU, 14% GPU).",
+    labelEn: "Productivity / Web / Dev",
+    shortLabelEn: "Office & Dev",
+    descriptionEn: "20-tab browser, 4K video, VS Code IDE, video calls (28% CPU, 14% GPU).",
   },
   gaming: {
     label: "Charge Mixte / Jeu 3D",
@@ -228,6 +244,9 @@ export const WORKLOAD_META: Record<
     gpuLoad: 0.86,
     ioRate: 0.45,
     description: "Jeu 3D 1440p, aperçu Blender/DaVinci Resolve ou inférence IA locale (56% CPU, 86% GPU).",
+    labelEn: "Mixed load / 3D gaming",
+    shortLabelEn: "Gaming / 3D",
+    descriptionEn: "1440p 3D game, Blender/DaVinci Resolve preview or local AI inference (56% CPU, 86% GPU).",
   },
   heavy: {
     label: "Pleine Charge (Rendu/Build)",
@@ -236,8 +255,59 @@ export const WORKLOAD_META: Record<
     gpuLoad: 0.95,
     ioRate: 0.85,
     description: "Compilation Rust multi-cœurs + encodage GPU / rendu lourd simultané (96% CPU, 95% GPU).",
+    labelEn: "Full load (Render/Build)",
+    shortLabelEn: "100% stress",
+    descriptionEn: "Multi-core Rust compilation plus GPU encoding or heavy rendering at the same time (96% CPU, 95% GPU).",
   },
 };
+
+/** Noms d'usine en anglais, utilisés seulement si le profil n'a pas été renommé. */
+const PROFILE_EN: Record<number, { name: string; description: string }> = {
+  1: {
+    name: "Eco Productivity (Pareto)",
+    description:
+      "Ideal V/F inflection point for desktop, dev, web and media: -58% watts with almost no perceived impact.",
+  },
+  2: {
+    name: "Absolute Silence (Night)",
+    description:
+      "Cool and quiet (< 21 dBA, GPU 0 RPM permanently) for writing, reading, music and night work.",
+  },
+  3: {
+    name: "Cool Gaming & Creation",
+    description:
+      "Keeps ~92% of FPS at 120 Hz while cutting 85 W of useless heat and halving noise.",
+  },
+  4: {
+    name: "Active Standby / Server",
+    description:
+      "Lowest power draw for downloads, cloud backup, a local server or an always-on PC.",
+  },
+  5: {
+    name: "Windows Nominal (Stock)",
+    description:
+      "Unrestricted original state (100% clocks, 165 Hz, aggressive Turbo) — used as the Before reference or fallback.",
+  },
+};
+
+/** Un profil renommé par l'utilisateur garde son nom dans les deux langues. */
+export function profileDisplayName(
+  profile: Pick<Profile, "id" | "name">,
+  locale: "fr" | "en"
+): string {
+  if (locale !== "en") return profile.name;
+  const isDefault = DEFAULT_PROFILES.some((p) => p.id === profile.id && p.name === profile.name);
+  return isDefault ? (PROFILE_EN[profile.id]?.name ?? profile.name) : profile.name;
+}
+
+export function profileDisplayDescription(
+  profile: Pick<Profile, "id" | "name" | "description">,
+  locale: "fr" | "en"
+): string {
+  if (locale !== "en") return profile.description;
+  const isDefault = DEFAULT_PROFILES.some((p) => p.id === profile.id && p.name === profile.name);
+  return isDefault ? (PROFILE_EN[profile.id]?.description ?? profile.description) : profile.description;
+}
 
 /** Échappe strictement une chaîne basique TOML (RFC / spec TOML v1.0) : \, ", \n, \r, \t et contrôles. */
 export function escapeTomlString(input: string): string {

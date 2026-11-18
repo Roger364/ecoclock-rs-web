@@ -2,6 +2,7 @@ import React from "react";
 import { Flame, Timer, Wind, Zap } from "lucide-react";
 import { BenchmarkMetric, TelemetrySnapshot } from "../types/hardware";
 import { TechTooltip } from "./TechTooltip";
+import { useLocale } from "../i18n";
 
 interface KpiStripProps {
   beforeTel: TelemetrySnapshot;
@@ -10,6 +11,7 @@ interface KpiStripProps {
 }
 
 export const KpiStrip: React.FC<KpiStripProps> = ({ beforeTel, afterTel, benchmarks }) => {
+  const { t } = useLocale();
   const wattsDelta = afterTel.totalSystemWatts - beforeTel.totalSystemWatts;
   const wattsPct =
     beforeTel.totalSystemWatts > 0 ? Math.round((wattsDelta / beforeTel.totalSystemWatts) * 100) : 0;
@@ -18,6 +20,11 @@ export const KpiStrip: React.FC<KpiStripProps> = ({ beforeTel, afterTel, benchma
   const noiseDelta = afterTel.systemNoiseDba - beforeTel.systemNoiseDba;
   const jsonBench = benchmarks[0];
   const gpuBench = benchmarks[3];
+  const VERDICT_EN: Record<string, string> = {
+    Imperceptible: "Imperceptible",
+    "Très léger": "Very slight",
+    "Perceptible mais fluide": "Perceptible but smooth",
+  };
 
   return (
     <div className="px-4 pt-3.5 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2.5">
@@ -29,7 +36,7 @@ export const KpiStrip: React.FC<KpiStripProps> = ({ beforeTel, afterTel, benchma
             extraBeforeAfter={`DC: ${beforeTel.totalSystemWatts}W → ${afterTel.totalSystemWatts}W | Prise 230V: ${beforeTel.psuWallWatts}W → ${afterTel.psuWallWatts}W`}
           >
             <span className="font-medium inline-flex items-center gap-1">
-              <Zap className="w-3.5 h-3.5 text-emerald-400" /> Électricité (Avant → Après)
+              <Zap className="w-3.5 h-3.5 text-emerald-400" /> {t("Électricité (Avant → Après)", "Power (Before → After)")}
             </span>
           </TechTooltip>
           <span
@@ -49,8 +56,8 @@ export const KpiStrip: React.FC<KpiStripProps> = ({ beforeTel, afterTel, benchma
           </span>
         </div>
         <div className="mt-1 text-[10.5px] font-mono text-slate-400 flex justify-between tabular-nums">
-          <span>Prise : {afterTel.psuWallWatts.toFixed(0)} W AC</span>
-          <span className="text-emerald-300/90">Éco : -{euroSaved.toFixed(1)} €/an</span>
+          <span>{t("Prise :", "Wall:")} {afterTel.psuWallWatts.toFixed(0)} W AC</span>
+          <span className="text-emerald-300/90">{t("Éco :", "Saving:")} -{euroSaved.toFixed(1)} {t("€/an", "€/yr")}</span>
         </div>
       </div>
 
@@ -62,7 +69,7 @@ export const KpiStrip: React.FC<KpiStripProps> = ({ beforeTel, afterTel, benchma
             extraBeforeAfter={`CPU ${beforeTel.cpuTempC}°C → ${afterTel.cpuTempC}°C | GPU ${beforeTel.gpuTempC}°C → ${afterTel.gpuTempC}°C | NVMe ${beforeTel.nvmeTempC}°C → ${afterTel.nvmeTempC}°C`}
           >
             <span className="font-medium inline-flex items-center gap-1">
-              <Flame className="w-3.5 h-3.5 text-amber-400" /> Températures (CPU / GPU)
+              <Flame className="w-3.5 h-3.5 text-amber-400" /> {t("Températures (CPU / GPU)", "Temperatures (CPU / GPU)")}
             </span>
           </TechTooltip>
           <span className="font-mono text-[11px] font-semibold text-sky-300 tabular-nums">
@@ -90,7 +97,7 @@ export const KpiStrip: React.FC<KpiStripProps> = ({ beforeTel, afterTel, benchma
             extraBeforeAfter={`Bruit ${beforeTel.systemNoiseDba} dBA → ${afterTel.systemNoiseDba} dBA | CPU ${beforeTel.cpuFanRpm} → ${afterTel.cpuFanRpm} RPM | GPU ${beforeTel.gpuFanRpm} → ${afterTel.gpuFanRpm} RPM`}
           >
             <span className="font-medium inline-flex items-center gap-1">
-              <Wind className="w-3.5 h-3.5 text-sky-400" /> Ventilation & Bruit (dBA)
+              <Wind className="w-3.5 h-3.5 text-sky-400" /> {t("Ventilation & Bruit (dBA)", "Cooling & Noise (dBA)")}
             </span>
           </TechTooltip>
           <span className="font-mono text-[11px] font-semibold text-emerald-300 tabular-nums">
@@ -106,7 +113,9 @@ export const KpiStrip: React.FC<KpiStripProps> = ({ beforeTel, afterTel, benchma
           <span>
             GPU :{" "}
             <strong className={afterTel.gpuFanRpm === 0 ? "text-emerald-300" : "text-slate-300"}>
-              {afterTel.gpuFanRpm === 0 ? "0 RPM Passif" : `${afterTel.gpuFanRpm} RPM`}
+              {afterTel.gpuFanRpm === 0
+                ? t("0 RPM Passif", "0 RPM passive")
+                : `${afterTel.gpuFanRpm} RPM`}
             </strong>
           </span>
           <span className="truncate ml-2">{afterTel.acousticLabel.split(" ")[0]}</span>
@@ -121,7 +130,7 @@ export const KpiStrip: React.FC<KpiStripProps> = ({ beforeTel, afterTel, benchma
             extraBeforeAfter={`JSON 5Mo: ${jsonBench.beforeMs} → ${jsonBench.afterMs} ms | Frame GPU: ${gpuBench.beforeMs} → ${gpuBench.afterMs} ms`}
           >
             <span className="font-medium inline-flex items-center gap-1">
-              <Timer className="w-3.5 h-3.5 text-indigo-400" /> Effet Réel en Vrai (ms)
+              <Timer className="w-3.5 h-3.5 text-indigo-400" /> {t("Effet Réel en Vrai (ms)", "Real-world effect (ms)")}
             </span>
           </TechTooltip>
           <span
@@ -131,7 +140,7 @@ export const KpiStrip: React.FC<KpiStripProps> = ({ beforeTel, afterTel, benchma
                 : "bg-amber-500/15 text-amber-300"
             }`}
           >
-            {jsonBench.humanVerdict}
+            {t(jsonBench.humanVerdict, VERDICT_EN[jsonBench.humanVerdict] ?? jsonBench.humanVerdict)}
           </span>
         </div>
         <div className="mt-1.5 flex items-baseline gap-2 font-mono tabular-nums">
@@ -143,8 +152,8 @@ export const KpiStrip: React.FC<KpiStripProps> = ({ beforeTel, afterTel, benchma
           </span>
         </div>
         <div className="mt-1 text-[10.5px] font-mono text-slate-400 flex justify-between tabular-nums">
-          <span>GPU : {gpuBench.afterMs.toFixed(1)} ms/img</span>
-          <span>C8 : {afterTel.cpuCStateDeepPct}% repos</span>
+          <span>GPU: {gpuBench.afterMs.toFixed(1)} ms/img</span>
+          <span>C8: {afterTel.cpuCStateDeepPct}% {t("repos", "idle")}</span>
         </div>
       </div>
     </div>
