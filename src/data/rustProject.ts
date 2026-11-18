@@ -222,6 +222,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 2. Commande de secours : restauration immédiate
     if args.restore_stock {
         let _ = controller.apply_config(&baseline);
+        // La restauration explicite a eu lieu : sans desarmement, le Drop du garde-fou
+        // reappliquerait la meme baseline et doublerait la ligne de journal.
+        guard.disarm();
         repo.clear_dirty_boot_flag();
         return Ok(());
     }

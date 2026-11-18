@@ -77,7 +77,7 @@ npm run check:rust   # extrait le crate puis cargo check --all-targets
 
 - Aucun pilote noyau, aucun service : uniquement les API Windows documentées (`powrprof`, `ChangeDisplaySettingsExW`) et NVML pour NVIDIA.
 - `RollbackGuard` restaure le profil de départ à la sortie si demandé.
-- Chaque application est journalisée dans `%APPDATA%\EcoClock\journal.log` : horodatage, valeurs demandées, refus et droits. Le journal survit au redémarrage et se lit avec `ecoclock --journal`.
+- Chaque application est journalisée dans `%APPDATA%\EcoClock\journal.log` : horodatage, valeurs demandées, refus et droits. Le journal survit au redémarrage et se lit avec `ecoclock --journal`. Vérifié avec le vrai binaire dans un bac à sable jetable : deux commandes (appliquer P3, restaurer) ont produit exactement deux lignes, relues par `--journal`.
 - Le script `.ps1` exporte le plan actif (`baseline-scheme.pow`) avant toute modification et vérifie sa restauration.
 
 ## Limites connues

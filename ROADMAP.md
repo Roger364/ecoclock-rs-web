@@ -51,7 +51,7 @@ Le `.ps1` n'est pas un asset de release : il est généré par l'application pou
 
 | # | Action | Pourquoi | Fini quand |
 |---|---|---|---|
-| 13 | Journal d'application ✅ | le statut disparaissait avec la session : impossible de dire ce qui avait été écrit, refusé ou restauré | une ligne par application dans `%APPDATA%\EcoClock\journal.log`, relue par `ecoclock --journal` |
+| 13 | Journal d'application ✅ | le statut disparaissait avec la session : impossible de dire ce qui avait été écrit, refusé ou restauré | une ligne par application dans `%APPDATA%\EcoClock\journal.log`, relue par `ecoclock --journal` ; vérifié en bac à sable : 2 commandes → 2 lignes |
 | 14 | Zone morte du curseur ✅ | sous 3,3 GHz, le plafond n'agit plus sur le 5900X ; l'interface laissait croire à un gain | hachures sous la piste (web + egui) et valeur annotée « aucun gain sous 3 300 (mesuré) » |
 
 ## Ce que je ne ferais pas

@@ -91,6 +91,7 @@ Dix propriétés, chacune tenue par un test nommé. Si l'une rougit, c'est la mo
 | Checksum des benchmarks en `wrapping_add` | les valeurs sommées sont des hashes, pas des durées ; le débordement tuait la GUI |
 | Détecter le constructeur via `PROCESSOR_IDENTIFIER` plutôt que CPUID | pas d'unsafe, pas de dépendance, et le nom ne sert qu'à avertir — jamais à choisir un réglage |
 | Ne proposer aucun réglage CPPC2 non mesuré | la règle du projet : aucun levier sans preuve de débit, de température ou de bruit |
+| Désarmer le garde-fou après une restauration explicite | sinon son `Drop` réapplique la même baseline : double écriture et journal qui compte deux restaurations pour une |
 
 ---
 
@@ -197,6 +198,7 @@ Détection retenue : le **code retour de l'écriture**. Rust le consigne dans `A
 2. **Format une ligne.** Horodatage UTC, droits, valeurs clés et refus, sans JSON ni dépendance de date : lisible dans Notepad et parsable. `--journal` montre les 20 dernières lignes et le chemin réel.
 3. **Zone morte hachurée, pas bridée.** Le curseur garde toute sa plage (décision de la vague 10) ; sous le repère, des hachures signalent l'absence d'effet mesuré et la valeur affiche « aucun gain sous 3 300 (mesuré) ».
 4. **Pas de plancher inventé.** Le plancher de 3 342 MHz est propre au 5900X ; les profils AMD du web (7800X3D, 7840HS) n'ont pas été mesurés. On annote, on ne modifie pas le modèle physique.
+5. **Journal prouvé par le binaire (18/11/2026).** Le test unitaire ne suffisait pas : dans le bac à sable jetable, `--apply-profile 3 --headless` puis `--restore-baseline` ont écrit deux lignes (`cpu_max=55%`, puis `cpu_max=100%`), relues par un troisième processus `--journal` ; sans journal, la commande répond « aucune application enregistrée » et sort en 0. Premier passage : trois lignes, car `--restore-baseline` appliquait la baseline une fois explicitement puis une fois via le `Drop` du `RollbackGuard`. Le garde-fou est désormais désarmé après la restauration explicite.
 
 ---
 
